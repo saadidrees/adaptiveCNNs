@@ -124,7 +124,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     inputs = Input(data_train.X.shape[1:]) # keras input layer
     n_out = data_train.y.shape[1]         # number of units in output layer
 
-    
+     
     # %% Build and run model
     
     bz = bz_ms
