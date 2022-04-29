@@ -646,7 +646,7 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
     y = Dense(n_out, kernel_initializer='normal', kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-3))(y)
     outputs = Activation('softplus')(y)    
 
-    mdl_name = 'A_CNN'
+    mdl_name = 'A_CNN_DENSE'
     return Model(inputs, outputs, name=mdl_name)
 
 
