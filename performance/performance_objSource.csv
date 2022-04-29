@@ -1,0 +1,2 @@
+mdl_name,temp_window,batch_size,epochs,chan1_n,filt1_size,filt1_3rdDim,chan2_n,filt2_size,filt2_3rdDim,chan3_n,filt3_size,filt3_3rdDim,BatchNorm,MaxPool,c_trial,FEV_train,FEV_val
+A_CNN_DENSE,100,10000,10,100,1,0,200,1,0,0,0,0,1,0,1,0.3391028642654419,-7.779896259307861
