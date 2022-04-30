@@ -80,7 +80,7 @@ def train(mdl, data_train, data_val,fname_excel,path_model_base, fname_model, bz
     # define model callbacks
     fname_cb = 'weights_'+ fname_model + '_epoch-{epoch:03d}' 
     
-    cbs = [cb.ModelCheckpoint(os.path.join(path_model_base, fname_cb),monitor='val_loss',save_weights_only=True),  # ,save_best_only=True,mode='auto'
+    cbs = [cb.ModelCheckpoint(os.path.join(path_model_base, fname_cb),monitor='val_loss',save_weights_only=True,save_best_only=True),  # ,save_best_only=True,mode='auto'
            cb.TensorBoard(log_dir=path_model_base, histogram_freq=0, write_grads=False),
            CustomCallback()]
             # cb.ReduceLROnPlateau(monitor='loss',min_lr=1e-6, factor=0.2, patience=5),
