@@ -21,7 +21,7 @@ idxStart_fixedLayers=0
 idxEnd_fixedLayers=-1
 CONTINUE_TRAINING=0
 
-lr = 0.001
+lr = 0.0001
 lr_fac = 1  # how much to divide the learning rate when training is resumed
 use_lrscheduler=1
 USE_CHUNKER=0

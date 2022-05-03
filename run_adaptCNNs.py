@@ -20,12 +20,13 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
                             BatchNorm=1,BatchNorm_train=0,MaxPool=1,c_trial=1,
                             lr=0.01,lr_fac=1,use_lrscheduler=1,USE_CHUNKER=0,CONTINUE_TRAINING=1,info='',
                             path_dataset_base='/home/saad/data/analyses/data_kiersten'):
-    
+ 
 # %%
     import numpy as np
     import matplotlib.pyplot as plt
     
     from tensorflow.keras.layers import Input
+    from tensorflow.keras import Model
     
     import model.models, model.train_model
     from model.performance import get_weightsDict, get_weightsOfLayer
@@ -35,6 +36,9 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     import datetime
     import os
     import csv
+    from scipy.stats import zscore
+    from numpy import genfromtxt
+
 
     from collections import namedtuple
     Exptdata = namedtuple('Exptdata', ['X', 'y'])
@@ -61,7 +65,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
     
     timeBin_src = 50
-    mean_src = 5
+    mean_src = 10
     amp_src = 2
     lum_src = np.random.normal(mean_src,amp_src,int(totalTime*60*1000/timeBin_src))
     lum_src = np.repeat(lum_src,timeBin_src)
@@ -71,8 +75,11 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     stim = lum_src*lum_obj
     resp = lum_obj.copy()
     
+    # stim = zscore(stim)
     
     norm_val = np.median(stim)
+    stim = stim/norm_val
+    # resp = resp/norm_val
         
     # % Datasets
     frac_train = 0.98
@@ -164,8 +171,51 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     print('FEV_train_cnn = %0.2f' %fev_train)
     print('FEV_val_cnn = %0.2f' %fev_val)
     
+    plt.plot(mdl_history.history['fraction_of_explained_variance'][50:])
+
+    
+# # %% test model outputs
+#     fname = '/home/saad/data/analyses/adaptiveCNNs/obj_source/A_CNN_DENSE/U-0.00_P-100_T-100_C1-100-01_C2-200-01_BN-1_MP-0_LR-0.0001_TR-01/weights_U-0.00_P-100_T-100_C1-100-01_C2-200-01_BN-1_MP-0_LR-0.0001_TR-01_epoch-179'
+#     mdl.load_weights(fname)
+#     weights_dict = get_weightsDict(mdl)
+    
+#     layer_idx = 15
+    
+#     x = Input(data_train.X.shape[1:])
+#     y = x
+#     counter = 0
+#     for layer in mdl.layers[1:layer_idx]:
+#         if 'operators' in layer.name:
+#             y = y[:,:,:,:,-1]
+#         else:
+#             y = layer(y)
+#         counter = counter+1
+#     mdl_new = Model(x,y)
+#     mdl_new.summary()
+    
+#     inp = data_train.X[:500]
+#     out = mdl_new.predict(inp)
+    
+#     # plt.plot(inp[:,-1,0,0])
+
+#     if out.ndim>2:
+#         plt.plot(out[:,:,0,0])
+#     else:
+#         plt.plot(out[:,:])
+
 
 # %% Write performance to csv file
+    if np.isnan(fev_train):
+        fname_excel_full = os.path.join(path_model_save,fname_excel)
+        trainProgress = genfromtxt(fname_excel_full, delimiter=',')
+        rgb = np.nanargmax(trainProgress[:,2])
+        train_best = trainProgress[rgb,:]
+        
+        fev_train = train_best[2]
+        nb_epochs = train_best[0]
+
+
+# %%
 
     if runOnCluster==1:
         path_save_performance = '/home/sidrees/scratch/adaptiveCNNs/performance'
