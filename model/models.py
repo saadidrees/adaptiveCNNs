@@ -646,7 +646,7 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
                     rgb = y.shape[1:]
                     y = Reshape(rgb)(BatchNormalization(axis=-1)(Flatten()(y)))
                     # y = Normalize_multichan()(y);y = y[0,0,0,:,:]
-                y = Activation('softplus')(y)
+                y = Activation('relu')(y)
 
         
     # Dense layer
