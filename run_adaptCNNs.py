@@ -53,7 +53,10 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
        return f
     
     # %% Build basic signal and response
-    totalTime = 10 # mins
+    if trainingSamps_dur>0:
+        totalTime = trainingSamps_dur
+    else:
+        totalTime = 10 # mins
     sigma = 2
     
     timeBin_obj = 10
@@ -174,7 +177,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     plt.plot(mdl_history.history['fraction_of_explained_variance'][50:])
 
     
-# # %% test model outputs
+# %% test model outputs
 #     fname = '/home/saad/data/analyses/adaptiveCNNs/obj_source/A_CNN_DENSE/U-0.00_P-100_T-100_C1-100-01_C2-200-01_BN-1_MP-0_LR-0.0001_TR-01/weights_U-0.00_P-100_T-100_C1-100-01_C2-200-01_BN-1_MP-0_LR-0.0001_TR-01_epoch-179'
 #     mdl.load_weights(fname)
 #     weights_dict = get_weightsDict(mdl)
