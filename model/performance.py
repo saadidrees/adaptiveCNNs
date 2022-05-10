@@ -49,10 +49,11 @@ def get_gradsDict(mdl,grads):
     for i in range(len(variables_names)):
         var_name = variables_names[i][:-2]        
         grads_dict[var_name] = np.atleast_1d(np.squeeze(grads[i]))
+    return grads_dict
 
-def get_gradientsOfVar(grads_dict,layer_name):
+def get_gradientsOfVar(grads_dict,layer_name_select):
     grad_keys = list(grads_dict.keys())
-    rgb = re.compile(layer_name+'/')
+    rgb = re.compile(layer_name_select+'/')
     layer_weight_names = list(filter(rgb.match, grad_keys))
     grads_layer = {}
     for l_name in layer_weight_names:
