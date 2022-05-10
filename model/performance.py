@@ -43,7 +43,9 @@ def get_weightsOfLayer(weights_dict,layer_name):
     
     return weights_layer
         
-        
+def get_layerNames(mdl):
+    layer_names = [layer.name for layer in mdl.layers]
+    return layer_names
 
   
 def save_modelPerformance(fname_save_performance,fname_model,metaInfo,data_quality,model_performance,model_params,stim_info,dataset_rr,datasets_val,dataset_pred):
