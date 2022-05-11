@@ -16,7 +16,32 @@ import multiprocessing as mp
 from functools import partial
 import os
 
+def get_weightsDict(mdl):
+    names = [weight.name for layer in mdl.layers for weight in layer.weights]
+    weights = mdl.get_weights()
+    weights_dict = {}
+    for i in range(len(names)):
+        weight_name = names[i][:-2]        
+        weights_dict[weight_name] = np.atleast_1d(np.squeeze(weights[i]))
+        
+    return weights_dict
 
+def get_weightsOfLayer(weights_dict,layer_name):
+    weights_keys = list(weights_dict.keys())
+    rgb = re.compile(layer_name+'/')
+    layer_weight_names = list(filter(rgb.match, weights_keys))
+    weights_layer = {}
+    for l_name in layer_weight_names:
+        param_name_full = os.path.basename(l_name)
+        rgb = re.findall(r'[^0-9]',param_name_full)
+        rgb = ''.join(rgb)
+        if rgb[-1] == '_':
+            rgb = rgb[:-1]
+        
+        param_name = rgb
+        weights_layer[param_name] = weights_dict[l_name]
+    
+    return weights_layer
   
 def save_modelPerformance(fname_save_performance,fname_model,metaInfo,data_quality,model_performance,model_params,stim_info,dataset_rr,datasets_val,dataset_pred):
 
