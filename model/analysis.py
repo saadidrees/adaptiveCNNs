@@ -39,10 +39,13 @@ def get_weightsOfLayer(weights_dict,layer_name):
 def get_gradsDict(mdl,grads):
     variables_names = [v.name for v in mdl.trainable_variables]
     grads_dict = {}
+    grads_dict_nans = {}
     for i in range(len(variables_names)):
         var_name = variables_names[i][:-2]        
         grads_dict[var_name] = np.atleast_1d(np.squeeze(grads[i]))
-    return grads_dict
+        grads_dict_nans[var_name] = np.sum(np.isnan(grads_dict[var_name]))
+        
+    return grads_dict,grads_dict_nans
 
 def get_gradientsOfVar(grads_dict,layer_name_select):
     grad_keys = list(grads_dict.keys())
@@ -65,3 +68,22 @@ def get_gradientsOfVar(grads_dict,layer_name_select):
 def get_layerNames(mdl):
     layer_names = [layer.name for layer in mdl.layers]
     return layer_names
+
+
+def updateWeights_allLayers(weights_dict,grads_dict,lr):
+    weights_dict_updated = {}
+    weights_dict_nans = {}
+    for v_name in grads_dict.keys():
+        updatedWeights = weights_dict[v_name] - (lr*grads_dict[v_name])
+        weights_dict_updated[v_name] = updatedWeights
+        weights_dict_nans[v_name] = np.sum(np.isnan(updatedWeights))
+        
+    return weights_dict_updated,weights_dict_nans
+    
+    
+    
+    
+    
+    
+    
+    

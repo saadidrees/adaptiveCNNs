@@ -8,8 +8,8 @@ Created on Tue Mar 23 20:42:39 2021
  
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras import Model, regularizers
-from tensorflow.keras.layers import Conv2D, Conv3D, Dense, Activation, Flatten, Reshape, MaxPool3D, MaxPool2D, Permute, BatchNormalization, GaussianNoise,DepthwiseConv2D
+from tensorflow.keras import Model, regularizers, Sequential
+from tensorflow.keras.layers import Conv2D, Conv3D, Dense, Activation, Flatten, Reshape, MaxPool3D, MaxPool2D, Permute, BatchNormalization, GaussianNoise,DepthwiseConv2D, Dropout
 from tensorflow.keras.regularizers import l1, l2
 import numpy as np
 import math
@@ -410,6 +410,7 @@ def conv_oper_multichan(x,kernel_1D):
     # print(conv_output.shape)
     return conv_output
 
+# ADD CONSTRAINTS
 class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
     def __init__(self,units=1,kernel_regularizer=None):
         super(photoreceptor_DA_multichan_randinit,self).__init__()
@@ -419,36 +420,46 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
                
     def build(self,input_shape):    # random inits
                
-        alpha_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=10) 
+    
+        alpha_range = (0,0.1)
+        alpha_init = tf.keras.initializers.RandomUniform(minval=alpha_range[0],maxval=alpha_range[1]) 
         self.alpha = self.add_weight(name='alpha',initializer=alpha_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
+        alpha_mulFac = tf.keras.initializers.Constant(100.) 
+        self.alpha_mulFac = self.add_weight(name='alpha_mulFac',initializer=alpha_mulFac,shape=[1,self.units],trainable=False)
         
-        beta_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=10) 
+        beta_range = (0,0.1)
+        beta_init = tf.keras.initializers.RandomUniform(minval=beta_range[0],maxval=beta_range[1]) 
         self.beta = self.add_weight(name='beta',initializer=beta_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
-        
-        gamma_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=1.0) 
-        self.gamma = self.add_weight(name='gamma',initializer=gamma_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
-        
-        zeta_init = tf.keras.initializers.RandomUniform(1.)
-        self.zeta = self.add_weight(name='zeta',initializer=zeta_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
-        
-        tauY_init = tf.keras.initializers.RandomUniform(minval=0.01,maxval=10) 
-        self.tauY = self.add_weight(name='tauY',initializer=tauY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
-        tauY_mulFac = tf.keras.initializers.Constant(10.) #tf.keras.initializers.Constant(10.) 
-        self.tauY_mulFac = tf.Variable(name='tauY_mulFac',initial_value=tauY_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
+        beta_mulFac = tf.keras.initializers.Constant(100.) 
+        self.beta_mulFac = self.add_weight(name='beta_mulFac',initializer=beta_mulFac,shape=[1,self.units],trainable=False)
 
-        tauZ_init = tf.keras.initializers.RandomUniform(minval=0.01,maxval=10) 
-        self.tauZ = self.add_weight(name='tauZ',initializer=tauZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
-        tauZ_mulFac = tf.keras.initializers.Constant(10.) 
+        gamma_range = (0.00001,0.01)
+        gamma_init = tf.keras.initializers.RandomUniform(minval=gamma_range[0],maxval=gamma_range[1]) 
+        self.gamma = self.add_weight(name='gamma',initializer=gamma_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,gamma_range[0],gamma_range[1]))
+        gamma_mulFac = tf.keras.initializers.Constant(100.) 
+        self.gamma_mulFac = self.add_weight(name='gamma_mulFac',initializer=gamma_mulFac,shape=[1,self.units],trainable=False)
+
+        tauY_range = (0.001,0.1)
+        tauY_init = tf.keras.initializers.RandomUniform(minval=tauY_range[0],maxval=tauY_range[1]) 
+        self.tauY = self.add_weight(name='tauY',initializer=tauY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,tauY_range[0],tauY_range[1]))
+        tauY_mulFac = tf.keras.initializers.Constant(1000.) #tf.keras.initializers.Constant(10.) 
+        self.tauY_mulFac = tf.Variable(name='tauY_mulFac',initial_value=tauY_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
+        
+        tauZ_range = (0.001,0.1)
+        tauZ_init = tf.keras.initializers.RandomUniform(minval=tauZ_range[0],maxval=tauZ_range[1]) 
+        self.tauZ = self.add_weight(name='tauZ',initializer=tauZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,tauZ_range[0],tauZ_range[1]))
+        tauZ_mulFac = tf.keras.initializers.Constant(1000.) 
         self.tauZ_mulFac = tf.Variable(name='tauZ_mulFac',initial_value=tauZ_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
         
-        nY_init = tf.keras.initializers.RandomUniform(minval=0.01,maxval=10) 
-        self.nY = self.add_weight(name='nY',initializer=nY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
-        nY_mulFac = tf.keras.initializers.Constant(1.) 
+        
+        nY_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=0.1) 
+        self.nY = self.add_weight(name='nY',initializer=nY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x, 0, 1))
+        nY_mulFac = tf.keras.initializers.Constant(100.) 
         self.nY_mulFac = tf.Variable(name='nY_mulFac',initial_value=nY_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
         
-        nZ_init = tf.keras.initializers.RandomUniform(minval=0.01,maxval=10) 
-        self.nZ = self.add_weight(name='nZ',initializer=nZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
-        nZ_mulFac = tf.keras.initializers.Constant(1.) 
+        nZ_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=0.1) 
+        self.nZ = self.add_weight(name='nZ',initializer=nZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x, 0, 1))
+        nZ_mulFac = tf.keras.initializers.Constant(100.) 
         self.nZ_mulFac = tf.Variable(name='nZ_mulFac',initial_value=nZ_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
     
     
@@ -456,14 +467,13 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
        
         timeBin = 1
         
-        alpha =  self.alpha
-        beta = self.beta
-        gamma =  self.gamma
+        alpha =  self.alpha*self.alpha_mulFac
+        beta = self.beta*self.beta_mulFac
+        gamma =  self.gamma*self.gamma_mulFac
         tau_y =  (self.tauY_mulFac*self.tauY) / timeBin
         tau_z =  (self.tauZ_mulFac*self.tauZ) / timeBin
         n_y =  (self.nY_mulFac*self.nY)
         n_z =  (self.nZ_mulFac*self.nZ)
-        zeta = self.zeta
         
         t = tf.range(0,inputs.shape[1],dtype='float32')
         
@@ -566,41 +576,17 @@ def A_CNN(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
     BatchNorm = bool(kwargs['BatchNorm']); MaxPool = bool(kwargs['MaxPool'])
     
     y = Reshape((inputs.shape[1],inputs.shape[-2]*inputs.shape[-1]))(inputs)
-    y = photoreceptor_DA_multichan_randinit(units=chan1_n,kernel_regularizer=l2(1e-6))(y)
+    y = photoreceptor_DA_multichan(units=chan1_n,kernel_regularizer=l2(1e-6))(y)
     y = Reshape((1,inputs.shape[-2],inputs.shape[-1],chan1_n))(y)
     y = Permute((4,2,3,1))(y)   # Channels first
     y = y[:,:,:,:,-1]       # only take the last time point
     
-    if BatchNorm==True:
-        y = BatchNormalization()(y)
+    # if BatchNorm==True:
+    #     y = BatchNormalization()(y)
         
     
-    if chan1_n==1 and chan2_n<1:
-        y = Flatten()(y)
-        outputs = Activation('softplus')(y)
-    else:
-        y = Activation('relu')(y)
-
-        # CNN - first layer
-        if chan2_n>0:
-            y = Conv2D(chan2_n, filt2_size, data_format="channels_first", kernel_regularizer=l2(1e-4))(y)
-            if BatchNorm is True:
-                y = BatchNormalization()(y)
-            y = Activation('relu')(y)
-
-        if chan3_n>0:
-            y = Conv2D(chan3_n, filt3_size, data_format="channels_first", kernel_regularizer=l2(1e-4))(y)
-            if BatchNorm is True:
-                y = BatchNormalization()(y)
-            y = Activation('relu')(y)
-
-        
-        # Dense layer
-        y = Flatten()(y)
-        if BatchNorm is True: 
-            y = BatchNormalization(axis=-1)(y)
-        y = Dense(n_out, kernel_initializer='normal', kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
-        outputs = Activation('softplus')(y)    
+    y = Flatten()(y)
+    outputs = Activation('softplus')(y)
 
     mdl_name = 'A_CNN'
     return Model(inputs, outputs, name=mdl_name)
@@ -612,55 +598,55 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
     chan2_n = kwargs['chan2_n']; filt2_size = kwargs['filt2_size']
     chan3_n = kwargs['chan3_n']; filt3_size = kwargs['filt3_size']
     BatchNorm = bool(kwargs['BatchNorm']); MaxPool = bool(kwargs['MaxPool'])
-    N_layers = kwargs['N_layers'];
+    N_layers = kwargs['N_layers']
+    dropout_rate = kwargs['dropout']
     
     y = inputs
     y = Reshape((inputs.shape[1],inputs.shape[-2]*inputs.shape[-1]))(y)
-    y = photoreceptor_DA_multichan_randinit(units=chan1_n,kernel_regularizer=l2(1e-6))(y)
+    y = photoreceptor_DA_multichan_randinit(units=chan1_n,kernel_regularizer=l2(1e-4))(y)
+    # y = photoreceptor_DA_multichan_randinit(units=chan1_n)(y)
     y = Reshape((1,inputs.shape[-2],inputs.shape[-1],chan1_n))(y)
     y = Permute((4,2,3,1))(y)   # Channels first
     y = y[:,:,:,:,-1]       # only take the last time point
     
     if BatchNorm==True:
-        # y = Normalize_multichan()(y);y = y[0,:,:,:]
-        # y = BatchNormalization()(y)
         rgb = y.shape[1:]
         y = Reshape(rgb)(BatchNormalization(axis=-1)(Flatten()(y)))
-    
+
+
     if chan1_n==1 and chan2_n<1:
-        # y = Activation('softplus')(y)
-        # outputs = y
-        y = Activation('relu')(y)
+        y = Flatten()(y)
+        y = Activation('softplus')(y)
+        outputs = y
         
     else:
         y = Activation('relu')(y)
-
+        
         if N_layers>0 and chan2_n>0:
             y = Flatten()(y)
             
             for i in range(N_layers):
-                y = Dense(chan2_n, kernel_initializer='normal', kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                if dropout_rate>0:
+                    y = Dropout(dropout_rate)(y)
 
                 if BatchNorm is True: 
-                    # y = BatchNormalization(axis=-1)(y)
                     rgb = y.shape[1:]
                     y = Reshape(rgb)(BatchNormalization(axis=-1)(Flatten()(y)))
-                    # y = Normalize_multichan()(y);y = y[0,0,0,:,:]
                 y = Activation('relu')(y)
 
         
-    # Dense layer
-    y = Flatten()(y)
-
-    if BatchNorm is True: 
-        y = BatchNormalization(axis=-1)(y)
-        # y = Normalize_multichan()(y);y = y[0,0,0,:,:]
-    y = Dense(n_out, kernel_initializer='normal', kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-3))(y)
-    outputs = Activation('softplus')(y)    
+        # Dense layer
+        y = Flatten()(y)
+    
+        if BatchNorm is True: 
+            y = BatchNormalization(axis=-1)(y)
+            # y = Normalize_multichan()(y);y = y[0,0,0,:,:]
+        y = Dense(n_out, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-3))(y)
+        outputs = Activation('softplus')(y)    
 
     mdl_name = 'A_CNN_DENSE'
     return Model(inputs, outputs, name=mdl_name)
-
 
 
 
