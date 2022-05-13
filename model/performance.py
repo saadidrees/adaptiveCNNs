@@ -159,9 +159,13 @@ def getModelParams(fname_modelFolder):
         rgb = re.compile(r'C2-(\d+)-(\d+)')
         rgb = rgb.search(fname_modelFolder)
         params['C2_3d'] = int(0)
-    params['C2_n'] = int(rgb.group(1))
-    params['C2_s'] = int(rgb.group(2))
-    
+    if rgb!=None:
+        params['C2_n'] = int(rgb.group(1))
+        params['C2_s'] = int(rgb.group(2))
+    else:
+        params['C2_n'] = 0
+        params['C2_s'] = 0
+
     try:
         rgb = re.compile(r'C3-(\d+)-(\d+)-(\d+)')
         rgb = rgb.search(fname_modelFolder)
@@ -170,9 +174,14 @@ def getModelParams(fname_modelFolder):
         rgb = re.compile(r'C3-(\d+)-(\d+)')
         rgb = rgb.search(fname_modelFolder)
         params['C3_3d'] = int(0)
-    params['C3_n'] = int(rgb.group(1))
-    params['C3_s'] = int(rgb.group(2))
-
+    
+    if rgb!=None:
+        params['C3_n'] = int(rgb.group(1))
+        params['C3_s'] = int(rgb.group(2))
+    else:
+        params['C3_n'] = 0
+        params['C3_s'] = 0
+        
     rgb = re.compile(r'BN-(\d+)')
     rgb = rgb.search(fname_modelFolder)
     params['BN'] = int(rgb.group(1))

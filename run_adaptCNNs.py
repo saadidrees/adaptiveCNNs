@@ -31,6 +31,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     # tf.compat.v1.disable_eager_execution()
     
     import model.models, model.train_model
+    from model.load_savedModel import load
     import model.analysis 
     from model import metrics
     
@@ -158,27 +159,29 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
     fname_model,_ = model.models.modelFileName(U=0,P=data_train.X.shape[1],T=temporal_width,
                                                         C1_n=chan1_n,C1_s=filt1_size,C1_3d=filt1_3rdDim,
+                                                        N_layers=N_layers,
                                                         C2_n=chan2_n,C2_s=filt2_size,C2_3d=filt2_3rdDim,
                                                         C3_n=chan3_n,C3_s=filt3_size,C3_3d=filt3_3rdDim,
                                                         BN=BatchNorm,MP=MaxPool,LR=lr,TR=c_trial)
     
+    if nb_epochs>0:
     
-    model_func = getattr(model.models,mdl_name)
-    mdl = model_func(inputs, n_out, **dict_params)      
+        model_func = getattr(model.models,mdl_name)
+        mdl = model_func(inputs, n_out, **dict_params)      
+        
+        mdl.summary()
+        
+        
+        fname_excel = 'performance.csv'
+        path_model_save = os.path.join(path_model_save_base,mdl_name,fname_model)   # the model save directory is the fname_model appened to save path
+        if not os.path.exists(path_model_save):
+            os.makedirs(path_model_save)
     
-    mdl.summary()
+        mdl_history = model.train_model.train(mdl, data_train, data_val, fname_excel,path_model_save, fname_model, bz=bz, nb_epochs=nb_epochs,validation_batch_size=validation_batch_size,validation_freq=validation_freq,
+                            use_batchLogger=use_batchLogger,USE_CHUNKER=USE_CHUNKER,initial_epoch=initial_epoch,lr=lr,use_lrscheduler=use_lrscheduler,lr_fac=lr_fac)  
     
     
-    fname_excel = 'performance.csv'
-    path_model_save = os.path.join(path_model_save_base,mdl_name,fname_model)   # the model save directory is the fname_model appened to save path
-    if not os.path.exists(path_model_save):
-        os.makedirs(path_model_save)
 
-    mdl_history = model.train_model.train(mdl, data_train, data_val, fname_excel,path_model_save, fname_model, bz=bz, nb_epochs=nb_epochs,validation_batch_size=validation_batch_size,validation_freq=validation_freq,
-                        use_batchLogger=use_batchLogger,USE_CHUNKER=USE_CHUNKER,initial_epoch=initial_epoch,lr=lr,use_lrscheduler=use_lrscheduler,lr_fac=lr_fac)  
-    
-    
-    
     # Evaluate performance
     fev_train = mdl_history.history['fraction_of_explained_variance'][-1]
     fev_val = mdl_history.history['val_fraction_of_explained_variance'][-1]
@@ -210,138 +213,138 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     # mdl.load_weights(os.path.join(path_model_save,fname_bestweights))
 # %%
 
-    rgb_train = mdl.evaluate(data_train.X,data_train.y,batch_size=bz)
-    rgb_val = mdl.evaluate(data_val.X,data_val.y,batch_size=bz)
+    # rgb_train = mdl.evaluate(data_train.X,data_train.y,batch_size=bz)
+    # rgb_val = mdl.evaluate(data_val.X,data_val.y,batch_size=bz)
     
 # %% Compute gradients and weights
-    idx_batches = np.arange(0,data_train.X.shape[0],2000)
-    curr_batch = 42
-    data_select_X = data_train.X[idx_batches[curr_batch]:idx_batches[curr_batch+1]]
-    data_select_y = data_train.y[idx_batches[curr_batch]:idx_batches[curr_batch+1]]
+    # idx_batches = np.arange(0,data_train.X.shape[0],2000)
+    # curr_batch = 42
+    # data_select_X = data_train.X[idx_batches[curr_batch]:idx_batches[curr_batch+1]]
+    # data_select_y = data_train.y[idx_batches[curr_batch]:idx_batches[curr_batch+1]]
     
     
-    inp = tf.Variable(data_select_X, dtype=tf.float32, name='input')
-    with tf.GradientTape(persistent=True) as tape:
-        tape.watch(inp)
-        result = mdl(inp, training=False)[:,0]
-        # grads_rgb = np.array(tape.gradient(result, mdl.trainable_variables))
+    # inp = tf.Variable(data_select_X, dtype=tf.float32, name='input')
+    # with tf.GradientTape(persistent=True) as tape:
+    #     tape.watch(inp)
+    #     result = mdl(inp, training=False)[:,0]
+    #     # grads_rgb = np.array(tape.gradient(result, mdl.trainable_variables))
         
-        bce = tf.keras.losses.MeanSquaredError()
-        loss = bce(result, data_select_y)
-        grads_rgb = np.array(tape.gradient(loss, mdl.trainable_weights))
+    #     bce = tf.keras.losses.MeanSquaredError()
+    #     loss = bce(result, data_select_y)
+    #     grads_rgb = np.array(tape.gradient(loss, mdl.trainable_weights))
 
     
-    grads = np.empty(len(grads_rgb),dtype='object')
-    for i in range(len(grads_rgb)):
-        grads[i] = np.array(grads_rgb[i])
+    # grads = np.empty(len(grads_rgb),dtype='object')
+    # for i in range(len(grads_rgb)):
+    #     grads[i] = np.array(grads_rgb[i])
     
-    grads_dict,grads_dict_nans = model.analysis.get_gradsDict(mdl,grads)
+    # grads_dict,grads_dict_nans = model.analysis.get_gradsDict(mdl,grads)
 
 
-    layer_names = model.analysis.get_layerNames(mdl)
-    layer_name_select = 'photoreceptor_da_multichan_4'
+    # layer_names = model.analysis.get_layerNames(mdl)
+    # layer_name_select = 'photoreceptor_da_multichan_4'
     
-    layer_grads = model.analysis.get_gradientsOfVar(grads_dict,layer_name_select)
+    # layer_grads = model.analysis.get_gradientsOfVar(grads_dict,layer_name_select)
     
-    weights_dict = model.analysis.get_weightsDict(mdl)
-    layer_weights = model.analysis.get_weightsOfLayer(weights_dict,layer_name_select)
+    # weights_dict = model.analysis.get_weightsDict(mdl)
+    # layer_weights = model.analysis.get_weightsOfLayer(weights_dict,layer_name_select)
     
-    lr_eff = lr/1
-    layer_updatedWeights = {}
-    for i in layer_grads.keys():
-        layer_updatedWeights[i] = layer_weights[i]-(lr_eff*layer_grads[i])
+    # lr_eff = lr/1
+    # layer_updatedWeights = {}
+    # for i in layer_grads.keys():
+    #     layer_updatedWeights[i] = layer_weights[i]-(lr_eff*layer_grads[i])
     
-    weights_dict_updated,weights_dict_nans = model.analysis.updateWeights_allLayers(weights_dict,grads_dict,lr_eff)
+    # weights_dict_updated,weights_dict_nans = model.analysis.updateWeights_allLayers(weights_dict,grads_dict,lr_eff)
 
-    print(weights_dict['photoreceptor_da_multichan_randinit_7/nZ'][68])
+    # print(weights_dict['photoreceptor_da_multichan_randinit_7/nZ'][68])
     
-    # plt.plot(weights_diff_rgb,grads_dict['photoreceptor_da_multichan_randinit/alpha'],'o')
+    # # plt.plot(weights_diff_rgb,grads_dict['photoreceptor_da_multichan_randinit/alpha'],'o')
     
 # %% test model outputs
-    # fname = '/home/saad/data/analyses/adaptiveCNNs/obj_source/A_CNN/U-0.00_P-100_T-100_C1-01-01_BN-1_MP-0_LR-0.0100_TR-01/weights_U-0.00_P-100_T-100_C1-01-01_BN-1_MP-0_LR-0.0100_TR-01_epoch-010'
-    # mdl.load_weights(fname)
-    # weights_dict = model.analysis.get_weightsDict(mdl)
+    # # fname = '/home/saad/data/analyses/adaptiveCNNs/obj_source/A_CNN/U-0.00_P-100_T-100_C1-01-01_BN-1_MP-0_LR-0.0100_TR-01/weights_U-0.00_P-100_T-100_C1-01-01_BN-1_MP-0_LR-0.0100_TR-01_epoch-010'
+    # # mdl.load_weights(fname)
+    # # weights_dict = model.analysis.get_weightsDict(mdl)
     
-    layer_idx = 11
+    # layer_idx = 11
     
-    x = Input(data_train.X.shape[1:])
-    y = x
-    counter = 0
-    for layer in mdl.layers[1:layer_idx]:
-        if 'operators' in layer.name:
-            y = y[:,:,:,:,-1]
-        else:
-            y = layer(y)
-        counter = counter+1
-    mdl_new = Model(x,y)
-    mdl_new.summary()
+    # x = Input(data_train.X.shape[1:])
+    # y = x
+    # counter = 0
+    # for layer in mdl.layers[1:layer_idx]:
+    #     if 'operators' in layer.name:
+    #         y = y[:,:,:,:,-1]
+    #     else:
+    #         y = layer(y)
+    #     counter = counter+1
+    # mdl_new = Model(x,y)
+    # mdl_new.summary()
     
-    inp = data_train.X
-    out = mdl_new.predict(inp,batch_size=bz)
+    # inp = data_train.X
+    # out = mdl_new.predict(inp,batch_size=bz)
     
-    # plt.plot(inp[:,-1,0,0])
+    # # plt.plot(inp[:,-1,0,0])
 
-    if out.ndim>2:
-        plt.plot(out[:,:,0,0])
-    else:
-        plt.plot(out[:,:])
+    # if out.ndim>2:
+    #     plt.plot(out[:,:,0,0])
+    # else:
+    #     plt.plot(out[:,:])
 
 # %% rebuild a-conv output
-    # params_norm = model.analysis.get_weightsOfLayer(weights_dict,'batch_normalization')
-    params = model.analysis.get_weightsOfLayer(weights_dict,'photoreceptor_da_multichan_randinit_7')
-    params_updated = model.analysis.get_weightsOfLayer(weights_dict_updated,'photoreceptor_da_multichan_4')
+    # # params_norm = model.analysis.get_weightsOfLayer(weights_dict,'batch_normalization')
+    # params = model.analysis.get_weightsOfLayer(weights_dict,'photoreceptor_da_multichan_randinit_7')
+    # params_updated = model.analysis.get_weightsOfLayer(weights_dict_updated,'photoreceptor_da_multichan_4')
     
-    # for i in params_updated.keys():
-    #     params[i] = params_updated[i]
+    # # for i in params_updated.keys():
+    # #     params[i] = params_updated[i]
     
-    alpha = params['alpha']
-    beta = params['beta']
-    gamma = params['gamma']
-    tauY = params['tauY']*params['tauY_mulFac']
-    nY = params['nY']*params['nY_mulFac']
-    tauZ = params['tauZ']*params['tauZ_mulFac']
-    nZ = +0.001#params['nZ']*params['nZ_mulFac']
+    # alpha = params['alpha']
+    # beta = params['beta']
+    # gamma = params['gamma']
+    # tauY = params['tauY']*params['tauY_mulFac']
+    # nY = params['nY']*params['nY_mulFac']
+    # tauZ = params['tauZ']*params['tauZ_mulFac']
+    # nZ = +0.001#params['nZ']*params['nZ_mulFac']
     
-    idx_param = 96
-    t = np.arange(0,100)
-    Ky = generate_simple_filter(tauY[idx_param],nY[idx_param],t)
-    # Kz = (gamma[idx_param]*Ky[idx_param]) + ((1-gamma[idx_param])*generate_simple_filter(tauZ[idx_param],nZ[idx_param],t))
-    Kz = (gamma[idx_param]*Ky[idx_param]) + ((1-gamma[idx_param])*generate_simple_filter(tauZ[idx_param],nZ,t))
+    # idx_param = 96
+    # t = np.arange(0,100)
+    # Ky = generate_simple_filter(tauY[idx_param],nY[idx_param],t)
+    # # Kz = (gamma[idx_param]*Ky[idx_param]) + ((1-gamma[idx_param])*generate_simple_filter(tauZ[idx_param],nZ[idx_param],t))
+    # Kz = (gamma[idx_param]*Ky[idx_param]) + ((1-gamma[idx_param])*generate_simple_filter(tauZ[idx_param],nZ,t))
     
-    # plt.plot(Kz);plt.show()
+    # # plt.plot(Kz);plt.show()
 
     
-    y = np.convolve(stim,Ky)
-    z = np.convolve(stim,Kz)
-    y = y[:stim.shape[0]]
-    z = z[:stim.shape[0]]
+    # y = np.convolve(stim,Ky)
+    # z = np.convolve(stim,Kz)
+    # y = y[:stim.shape[0]]
+    # z = z[:stim.shape[0]]
     
-    adapt_out = (alpha[idx_param]*y)/(1+(beta[idx_param]*z))
-    
-    
-    # final_out_scaled = (adapt_out - adapt_out.mean()) / (np.var(adapt_out)**.5)
-    # final_out_scaled = (params_norm['gamma']*final_out_scaled) + params_norm['beta']
-    # final_out = np.log(1+np.exp(final_out_scaled))
-    
-    final_out = np.log(1+np.exp(adapt_out))
+    # adapt_out = (alpha[idx_param]*y)/(1+(beta[idx_param]*z))
     
     
+    # # final_out_scaled = (adapt_out - adapt_out.mean()) / (np.var(adapt_out)**.5)
+    # # final_out_scaled = (params_norm['gamma']*final_out_scaled) + params_norm['beta']
+    # # final_out = np.log(1+np.exp(final_out_scaled))
     
-    idx_plots = np.arange(1000,2000)
-    plt.plot(resp[idx_plots])
-    plt.plot(final_out[idx_plots])
-    # plt.plot(final_out_scaled[idx_plots])
-    plt.show()
+    # final_out = np.log(1+np.exp(adapt_out))
     
-    # plt.plot(Ky,'r')
-    plt.plot(Kz,'m')
-    plt.show()
     
-    plt.plot(stim[:500])
-    # plt.plot(y[:500],'r')
-    plt.plot(z[:500],'m')
-    # plt.plot(1/(1+beta*z[:500]))
-    plt.show()
+    
+    # idx_plots = np.arange(1000,2000)
+    # plt.plot(resp[idx_plots])
+    # plt.plot(final_out[idx_plots])
+    # # plt.plot(final_out_scaled[idx_plots])
+    # plt.show()
+    
+    # # plt.plot(Ky,'r')
+    # plt.plot(Kz,'m')
+    # plt.show()
+    
+    # plt.plot(stim[:500])
+    # # plt.plot(y[:500],'r')
+    # plt.plot(z[:500],'m')
+    # # plt.plot(1/(1+beta*z[:500]))
+    # plt.show()
 
 # %% Write performance to csv file
     if np.isnan(fev_train):

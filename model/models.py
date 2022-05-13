@@ -64,7 +64,7 @@ def get_model_memory_usage(batch_size, model):
     
     return gbytes
 
-def modelFileName(U=0,P=0,T=0,C1_n=0,C1_s=0,C1_3d=0,C2_n=0,C2_s=0,C2_3d=0,C3_n=0,C3_s=0,C3_3d=0,BN=0,MP=0,LR=0,TR=0,with_TR=True):
+def modelFileName(U=0,P=0,T=0,C1_n=0,C1_s=0,C1_3d=0,N_layers=0,C2_n=0,C2_s=0,C2_3d=0,C3_n=0,C3_s=0,C3_3d=0,BN=0,MP=0,LR=0,TR=0,with_TR=True):
     
     """
     Takes in data and model parameters, and parses them to 
@@ -110,6 +110,11 @@ def modelFileName(U=0,P=0,T=0,C1_n=0,C1_s=0,C1_3d=0,C2_n=0,C2_s=0,C2_3d=0,C3_n=0
     dict_params['filt1_size'] = C1_s
     key = 'C1'
     fname = fname+key+'-'+eval(key)+'_'    
+    
+    if N_layers>0:
+        N_layers = '%02d'%N_layers
+        fname = parse_param('NL',N_layers,fname)    
+        dict_params['N_layers'] = int(N_layers)
 
     if C2_n>0:
         if C2_3d>0:
@@ -421,45 +426,51 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
     def build(self,input_shape):    # random inits
                
     
-        alpha_range = (0,0.1)
+        alpha_range = (0,1)
         alpha_init = tf.keras.initializers.RandomUniform(minval=alpha_range[0],maxval=alpha_range[1]) 
         self.alpha = self.add_weight(name='alpha',initializer=alpha_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
         alpha_mulFac = tf.keras.initializers.Constant(100.) 
         self.alpha_mulFac = self.add_weight(name='alpha_mulFac',initializer=alpha_mulFac,shape=[1,self.units],trainable=False)
         
-        beta_range = (0,0.1)
+        beta_range = (0,1)
         beta_init = tf.keras.initializers.RandomUniform(minval=beta_range[0],maxval=beta_range[1]) 
         self.beta = self.add_weight(name='beta',initializer=beta_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
         beta_mulFac = tf.keras.initializers.Constant(100.) 
         self.beta_mulFac = self.add_weight(name='beta_mulFac',initializer=beta_mulFac,shape=[1,self.units],trainable=False)
 
-        gamma_range = (0.00001,0.01)
+        gamma_range = (0.00001,0.1)
         gamma_init = tf.keras.initializers.RandomUniform(minval=gamma_range[0],maxval=gamma_range[1]) 
         self.gamma = self.add_weight(name='gamma',initializer=gamma_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,gamma_range[0],gamma_range[1]))
-        gamma_mulFac = tf.keras.initializers.Constant(100.) 
+        gamma_mulFac = tf.keras.initializers.Constant(10.) 
         self.gamma_mulFac = self.add_weight(name='gamma_mulFac',initializer=gamma_mulFac,shape=[1,self.units],trainable=False)
 
-        tauY_range = (0.001,0.1)
+        # zeta_range = (-1,1)
+        # zeta_init = tf.keras.initializers.RandomUniform(minval=zeta_range[0],maxval=zeta_range[1]) 
+        # self.zeta = self.add_weight(name='zeta',initializer=zeta_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
+        # zeta_mulFac = tf.keras.initializers.Constant(10.) 
+        # self.zeta_mulFac = self.add_weight(name='zeta_mulFac',initializer=zeta_mulFac,shape=[1,self.units],trainable=False)
+
+        tauY_range = (0.01,1.)
         tauY_init = tf.keras.initializers.RandomUniform(minval=tauY_range[0],maxval=tauY_range[1]) 
         self.tauY = self.add_weight(name='tauY',initializer=tauY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,tauY_range[0],tauY_range[1]))
-        tauY_mulFac = tf.keras.initializers.Constant(1000.) #tf.keras.initializers.Constant(10.) 
+        tauY_mulFac = tf.keras.initializers.Constant(100.) #tf.keras.initializers.Constant(10.) 
         self.tauY_mulFac = tf.Variable(name='tauY_mulFac',initial_value=tauY_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
         
-        tauZ_range = (0.001,0.1)
+        tauZ_range = (0.001,1.)
         tauZ_init = tf.keras.initializers.RandomUniform(minval=tauZ_range[0],maxval=tauZ_range[1]) 
         self.tauZ = self.add_weight(name='tauZ',initializer=tauZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,tauZ_range[0],tauZ_range[1]))
         tauZ_mulFac = tf.keras.initializers.Constant(1000.) 
         self.tauZ_mulFac = tf.Variable(name='tauZ_mulFac',initial_value=tauZ_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
         
         
-        nY_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=0.1) 
+        nY_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=1.) 
         self.nY = self.add_weight(name='nY',initializer=nY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x, 0, 1))
-        nY_mulFac = tf.keras.initializers.Constant(100.) 
+        nY_mulFac = tf.keras.initializers.Constant(10.) 
         self.nY_mulFac = tf.Variable(name='nY_mulFac',initial_value=nY_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
         
-        nZ_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=0.1) 
+        nZ_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=1.) 
         self.nZ = self.add_weight(name='nZ',initializer=nZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x, 0, 1))
-        nZ_mulFac = tf.keras.initializers.Constant(100.) 
+        nZ_mulFac = tf.keras.initializers.Constant(10.) 
         self.nZ_mulFac = tf.Variable(name='nZ_mulFac',initial_value=nZ_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
     
     
@@ -470,6 +481,7 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
         alpha =  self.alpha*self.alpha_mulFac
         beta = self.beta*self.beta_mulFac
         gamma =  self.gamma*self.gamma_mulFac
+        # zeta = self.zeta*self.zeta_mulFac
         tau_y =  (self.tauY_mulFac*self.tauY) / timeBin
         tau_z =  (self.tauZ_mulFac*self.tauZ) / timeBin
         n_y =  (self.nY_mulFac*self.nY)
@@ -486,8 +498,8 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
         y_tf_reshape = tf.reshape(y_tf,(-1,y_tf.shape[1],y_tf.shape[2],inputs.shape[-1],alpha.shape[-1]))
         z_tf_reshape = tf.reshape(z_tf,(-1,z_tf.shape[1],z_tf.shape[2],inputs.shape[-1],alpha.shape[-1]))
     
+        # outputs = zeta[None,None,:,None,:] + (alpha[None,None,:,None,:]*y_tf_reshape)/(1+(beta[None,None,:,None,:]*z_tf_reshape))
         outputs = (alpha[None,None,:,None,:]*y_tf_reshape)/(1+(beta[None,None,:,None,:]*z_tf_reshape))
-        # outputs = (alpha[None,None,:,None,:]*inputs_reshape)/(1+(beta[None,None,:,None,:]*z_tf_reshape))
         
         outputs = outputs[:,:,0,:,:]
         
@@ -601,6 +613,8 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
     N_layers = kwargs['N_layers']
     dropout_rate = kwargs['dropout']
     
+    arr_dense = np.arange(100,100*N_layers+100,100)
+    
     y = inputs
     y = Reshape((inputs.shape[1],inputs.shape[-2]*inputs.shape[-1]))(y)
     y = photoreceptor_DA_multichan_randinit(units=chan1_n,kernel_regularizer=l2(1e-4))(y)
@@ -627,6 +641,7 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
             
             for i in range(N_layers):
                 y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                # y = Dense(arr_dense[i], kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
                 if dropout_rate>0:
                     y = Dropout(dropout_rate)(y)
 

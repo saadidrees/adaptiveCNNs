@@ -36,8 +36,8 @@ def chunker(data,batch_size,mode='default'):
         
 def lr_scheduler(epoch,lr):
     # [epoch,lr divide factor]
-    arr_scheduler = np.array([[15,10],
-                              [200,10]])
+    arr_scheduler = np.array([[70,10],
+                              [220,10]])
     
     idx = np.where(arr_scheduler[:,0]==epoch)[0]
     
@@ -52,8 +52,8 @@ def lr_scheduler(epoch,lr):
 def train(mdl, data_train, data_val,fname_excel,path_model_save, fname_model, bz=588, nb_epochs=200, validation_batch_size=5000,validation_freq=10,USE_CHUNKER=0,initial_epoch=1,lr=0.001,lr_fac=1,use_lrscheduler=0,use_batchLogger=0):
     
     optimizer = Adam(lr) #Adam(lr,clipnorm=1,clipvalue=1) # clipvalue=0.3 # clipnorm=1,
-    mdl.compile(loss='poisson', optimizer=optimizer, metrics=[metrics.cc, metrics.rmse, metrics.fev],experimental_run_tf_function=False)
-    # mdl.compile(loss='mse', optimizer=optimizer, metrics=[metrics.cc, metrics.rmse, metrics.fev],experimental_run_tf_function=False)
+    # mdl.compile(loss='poisson', optimizer=optimizer, metrics=[metrics.cc, metrics.rmse, metrics.fev],experimental_run_tf_function=False)
+    mdl.compile(loss='mse', optimizer=optimizer, metrics=[metrics.cc, metrics.rmse, metrics.fev],experimental_run_tf_function=False)
 
 
     if initial_epoch==0: # 
