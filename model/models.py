@@ -456,20 +456,22 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
         tauY_mulFac = tf.keras.initializers.Constant(100.) #tf.keras.initializers.Constant(10.) 
         self.tauY_mulFac = tf.Variable(name='tauY_mulFac',initial_value=tauY_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
         
-        tauZ_range = (0.001,1.)
+        tauZ_range = (0.01,1.)
         tauZ_init = tf.keras.initializers.RandomUniform(minval=tauZ_range[0],maxval=tauZ_range[1]) 
         self.tauZ = self.add_weight(name='tauZ',initializer=tauZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,tauZ_range[0],tauZ_range[1]))
-        tauZ_mulFac = tf.keras.initializers.Constant(1000.) 
+        tauZ_mulFac = tf.keras.initializers.Constant(100.) 
         self.tauZ_mulFac = tf.Variable(name='tauZ_mulFac',initial_value=tauZ_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
         
         
-        nY_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=1.) 
-        self.nY = self.add_weight(name='nY',initializer=nY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x, 0, 1))
+        nY_range = (0.0,0.5)
+        nY_init = tf.keras.initializers.RandomUniform(minval=nY_range[0],maxval=nY_range[1]) 
+        self.nY = self.add_weight(name='nY',initializer=nY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,nY_range[0],nY_range[1]))
         nY_mulFac = tf.keras.initializers.Constant(10.) 
         self.nY_mulFac = tf.Variable(name='nY_mulFac',initial_value=nY_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
         
-        nZ_init = tf.keras.initializers.RandomUniform(minval=0.0,maxval=1.) 
-        self.nZ = self.add_weight(name='nZ',initializer=nZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x, 0, 1))
+        nZ_range = (0.0,0.5)
+        nZ_init = tf.keras.initializers.RandomUniform(minval=nZ_range[0],maxval=nZ_range[1]) 
+        self.nZ = self.add_weight(name='nZ',initializer=nZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,nZ_range[0],nZ_range[1]))
         nZ_mulFac = tf.keras.initializers.Constant(10.) 
         self.nZ_mulFac = tf.Variable(name='nZ_mulFac',initial_value=nZ_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
     
