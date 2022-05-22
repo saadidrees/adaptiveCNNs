@@ -227,27 +227,30 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         
         print('FEV_train = %0.2f' %best_val_train)
         print('FEV_val = %0.2f' %best_val)
+        
+        # fev_train = best_val_train
+        # fev_val = 
     except:
         pass
 
     
-    fname_bestweights = 'weights_'+fname_model+'_epoch-%03d'%idx_bestVal
-    mdl.load_weights(os.path.join(path_model_save,fname_bestweights))
+    # fname_bestweights = 'weights_'+fname_model+'_epoch-%03d'%idx_bestVal
+    # mdl.load_weights(os.path.join(path_model_save,fname_bestweights))
     
     
-    y_pred = mdl.predict(data_val.X)
-    idx_plots = np.arange(100,1000)
-    plt.plot(data_val.X[idx_plots,-1,0,0])
-    plt.plot(mean_src*data_val.y[idx_plots],'darkorange')
-    plt.plot(mean_src*y_pred[idx_plots],'r')
-    plt.show()
+    # y_pred = mdl.predict(data_val.X)
+    # idx_plots = np.arange(100,1000)
+    # plt.plot(data_val.X[idx_plots,-1,0,0])
+    # plt.plot(mean_src*data_val.y[idx_plots],'darkorange')
+    # plt.plot(mean_src*y_pred[idx_plots],'r')
+    # plt.show()
     
-    y_pred = mdl.predict(data_train.X[:5000])
-    plt.plot(data_train.X[750:1500,-1,0,0])
-    plt.plot(mean_src*data_train.y[750:1500])
-    plt.plot(mean_src*y_pred[750:1500])
-    # plt.plot(data_val.X[:1000,-1,0,0])
-    plt.show()
+    # y_pred = mdl.predict(data_train.X[:5000])
+    # plt.plot(data_train.X[750:1500,-1,0,0])
+    # plt.plot(mean_src*data_train.y[750:1500])
+    # plt.plot(mean_src*y_pred[750:1500])
+    # # plt.plot(data_val.X[:1000,-1,0,0])
+    # plt.show()
 
     # y_real_norm = data_val.y/np.min(data_val.y)
     # y_pred_norm = y_pred/np.min(data_val.y)
