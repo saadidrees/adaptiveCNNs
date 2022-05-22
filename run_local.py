@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#taq!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Fri Apr 29 14:58:27 2022
@@ -21,25 +21,25 @@ idxStart_fixedLayers=0
 idxEnd_fixedLayers=-1
 CONTINUE_TRAINING=0
 
-lr = 0.0001
+lr = 0.01
 lr_fac = 1  # how much to divide the learning rate when training is resumed
 use_lrscheduler=1
 USE_CHUNKER=0
 pr_temporal_width = 0
-temporal_width=100
+temporal_width=200
 thresh_rr=0
-chan1_n=200
+chan1_n=10
 filt1_size=1
 filt1_3rdDim=0
-N_layers = 10
-chan2_n=900
-filt2_size=1
+N_layers = 1
+chan2_n=5
+filt2_size=0
 filt2_3rdDim=0
 chan3_n=0
 filt3_size=0
 filt3_3rdDim=0
 nb_epochs=200         # setting this to 0 only runs evaluation
-bz_ms=10000
+bz_ms=512
 BatchNorm=1
 MaxPool=0
 runOnCluster=0
@@ -60,7 +60,7 @@ fname_data_train_val_test = ''
 c_trial = 1
 
 path_existing_mdl = ''
-    
+
 # %%
 for c_trial in range(1,num_trials+1):
     model_performance,mdl = run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,path_dataset_base=path_dataset_base,saveToCSV=saveToCSV,runOnCluster=0,

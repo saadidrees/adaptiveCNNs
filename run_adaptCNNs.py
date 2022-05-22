@@ -46,14 +46,17 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     from collections import namedtuple
     Exptdata = namedtuple('Exptdata', ['X', 'y'])
     
-    from model.data_handler import rolling_window
+    from model.data_handler import rolling_window, unroll_data
     from scipy.ndimage.filters import gaussian_filter
     from scipy.special import gamma as scipy_gamma
     
+    import stimuli
+    
     def generate_simple_filter(tau,n,t):
-       f = (t**n)*np.exp(-t/tau); # functional form in paper
-       f = (f/tau**(n+1))/scipy_gamma(n+1) # normalize appropriately
-       return f
+        t_rep = np.repeat(t[:,None],n.shape[0],axis=-1)
+        f = (t_rep**n[None,:])*np.exp(-t_rep/tau[None,:]); # functional form in paper
+        f = (f/tau**(n+1))/scipy_gamma(n+1) # normalize appropriately
+        return f
     
     # % Build basic signal and response
     if trainingSamps_dur>0:
@@ -61,35 +64,54 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     else:
         totalTime = 10 # mins
         
-    sigma = 2
+        
+    sigma = 1
     
     timeBin_obj = 10
-    mean_obj = 10
-    amp_obj = 2
+    mean_obj = 5
+    amp_obj = 1   
+    
     lum_obj = np.random.normal(mean_obj,amp_obj,int(totalTime*60*1000/timeBin_obj))
     lum_obj = np.repeat(lum_obj,timeBin_obj)
     lum_obj = gaussian_filter(lum_obj,sigma=sigma)
     
-    
-    timeBin_src = 50
-    mean_src = 10
-    amp_src = 2
-    lum_src = np.random.normal(mean_src,amp_src,int(totalTime*60*1000/timeBin_src))
-    lum_src = np.repeat(lum_src,timeBin_src)
+    timeBin_src = 500
+    dur_src = 50 #
+    mean_src = 5
+    amp_src = 20
+    step_block = mean_src*np.ones(timeBin_src)
+    step_block[:dur_src] = amp_src
+    # step_block = np.concatenate((step_block,amp_src+mean_src*np.ones(timeBin_src)),axis=0)
+    n_reps = int(np.ceil(lum_obj.shape[0]/step_block.shape[0]))
+    step_block = np.tile(step_block,n_reps)
+    lum_src = step_block[:lum_obj.shape[0]]
     lum_src = gaussian_filter(lum_src,sigma=sigma)
+
+
     
+    # stim,resp,lum_src,lum_obj = stimuli.obj_source(totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,timeBin_src=timeBin_src,mean_src=mean_src,amp_src=amp_src,sigma=sigma)
+    # stim,resp,lum_src,lum_obj = stimuli.sin_mul(totalTime,freq_obj=5,amp_obj=1,offset_obj=1,freq_src=1,amp_src=1,offset_src=1)
+    # stim,resp,lum_src,lum_obj = stimuli.obj_source_square(totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,timeBin_src=timeBin_src,mean_src=mean_src,amp_src=amp_src,sigma=sigma)
     
+    # lum_src[lum_src<1] = 1
     stim = lum_src*lum_obj
+    # stim[stim<1] = 1
     resp = lum_obj.copy()
-    
+
     # stim = zscore(stim)
     
     norm_val = np.median(stim)
-    stim = stim/norm_val
+    # stim = stim/norm_val
     # resp = resp/norm_val
+    
+    idx_plots = np.arange(200,1800)
+    plt.plot(lum_src[idx_plots])
+    plt.plot(lum_obj[idx_plots])
+    plt.show()
+    plt.plot(stim[idx_plots])
         
     # % Datasets
-    frac_train = 0.99
+    frac_train = 0.90
     frac_val = 1-frac_train
     
     idx_train = np.floor(frac_train*stim.shape[0]).astype('int')
@@ -123,7 +145,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     X = X[:,:,np.newaxis,np.newaxis]
     y = dict_train['y']
     y = rolling_window(y,temporal_width)
-    y = y[:,-1]
+    y = y[:,-1] #    y = y[:,-1]
     
     if y.ndim==1:
         y = y[:,np.newaxis]
@@ -135,7 +157,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
 
     y = dict_val['y']
     y = rolling_window(y,temporal_width)
-    y = y[:,-1]
+    y = y[:,-1] #y = y[:,-1]
     if y.ndim==1:
         y = y[:,np.newaxis]
     data_val = Exptdata(X,y)
@@ -209,8 +231,28 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         pass
 
     
-    # fname_bestweights = 'weights_'+fname_model+'_epoch-%03d'%idx_bestVal
-    # mdl.load_weights(os.path.join(path_model_save,fname_bestweights))
+    fname_bestweights = 'weights_'+fname_model+'_epoch-%03d'%idx_bestVal
+    mdl.load_weights(os.path.join(path_model_save,fname_bestweights))
+    
+    
+    y_pred = mdl.predict(data_val.X)
+    idx_plots = np.arange(100,1000)
+    plt.plot(data_val.X[idx_plots,-1,0,0])
+    plt.plot(mean_src*data_val.y[idx_plots],'darkorange')
+    plt.plot(mean_src*y_pred[idx_plots],'r')
+    plt.show()
+    
+    y_pred = mdl.predict(data_train.X[:5000])
+    plt.plot(data_train.X[750:1500,-1,0,0])
+    plt.plot(mean_src*data_train.y[750:1500])
+    plt.plot(mean_src*y_pred[750:1500])
+    # plt.plot(data_val.X[:1000,-1,0,0])
+    plt.show()
+
+    # y_real_norm = data_val.y/np.min(data_val.y)
+    # y_pred_norm = y_pred/np.min(data_val.y)
+    # rgb = model.metrics.fraction_of_explainable_variance_explained(y_real_norm,y_pred_norm,0)
+    
 # %%
 
     # rgb_train = mdl.evaluate(data_train.X,data_train.y,batch_size=bz)
@@ -290,36 +332,61 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     #     plt.plot(out[:,:])
 
 # %% rebuild a-conv output
-    # # params_norm = model.analysis.get_weightsOfLayer(weights_dict,'batch_normalization')
-    # params = model.analysis.get_weightsOfLayer(weights_dict,'photoreceptor_da_multichan_randinit_7')
-    # params_updated = model.analysis.get_weightsOfLayer(weights_dict_updated,'photoreceptor_da_multichan_4')
+    # weights_dict = model.analysis.get_weightsDict(mdl)
+    # params_norm = model.analysis.get_weightsOfLayer(weights_dict,'batch_normalization')
+    # params = model.analysis.get_weightsOfLayer(weights_dict,'photoreceptor_da_multichan_randinit_10')
+    # # params_updated = model.analysis.get_weightsOfLayer(weights_dict,'photoreceptor_da_multichan_4')
     
     # # for i in params_updated.keys():
     # #     params[i] = params_updated[i]
     
-    # alpha = params['alpha']
-    # beta = params['beta']
-    # gamma = params['gamma']
-    # tauY = params['tauY']*params['tauY_mulFac']
-    # nY = params['nY']*params['nY_mulFac']
-    # tauZ = params['tauZ']*params['tauZ_mulFac']
-    # nZ = +0.001#params['nZ']*params['nZ_mulFac']
-    
-    # idx_param = 96
-    # t = np.arange(0,100)
-    # Ky = generate_simple_filter(tauY[idx_param],nY[idx_param],t)
-    # # Kz = (gamma[idx_param]*Ky[idx_param]) + ((1-gamma[idx_param])*generate_simple_filter(tauZ[idx_param],nZ[idx_param],t))
-    # Kz = (gamma[idx_param]*Ky[idx_param]) + ((1-gamma[idx_param])*generate_simple_filter(tauZ[idx_param],nZ,t))
-    
-    # # plt.plot(Kz);plt.show()
+    # alpha = np.atleast_1d(params['alpha']*params['alpha_mulFac'])
+    # beta = np.atleast_1d(params['beta']*params['beta_mulFac'])
+    # gamma = np.atleast_1d(params['gamma']*params['gamma_mulFac'])  #np.atleast_1d(0.75) #
+    # tauY = np.atleast_1d(params['tauY']*params['tauY_mulFac'])
+    # nY = np.atleast_1d(params['nY']*params['nY_mulFac'])
+    # tauZ = np.atleast_1d(params['tauZ']*params['tauZ_mulFac']) #np.atleast_1d(50) #
+    # nZ =  np.atleast_1d(params['nZ']*params['nZ_mulFac'])       #np.atleast_1d(0.1)
+    # tauC = np.atleast_1d(params['tauC']*params['tauC_mulFac'])   #np.atleast_1d(20)
+    # nC = np.atleast_1d(params['nC']*params['nC_mulFac']) #np.atleast_1d(0.1) #
 
     
-    # y = np.convolve(stim,Ky)
-    # z = np.convolve(stim,Kz)
+    # idx_param = 0
+    # t = np.arange(0,temporal_width)
+    # Ky = generate_simple_filter(tauY,nY,t)
+    # Kc = generate_simple_filter(tauC,nC,t)
+    # Kz = generate_simple_filter(tauZ,nZ,t)
+    # Kz = (gamma*Kc) + (1-gamma)*Kz
+
+    
+    # # Kz = (gamma[idx_param]*Ky[idx_param]) + ((1-gamma[idx_param])*generate_simple_filter(tauZ[idx_param],nZ[idx_param],t))
+    # # Kz = (gamma[idx_param]*Ky[idx_param]) + ((1-gamma[idx_param])*generate_simple_filter(tauZ[idx_param],nZ,t))
+    # plt.plot(Ky);plt.show()
+    # plt.plot(Kz);plt.show()
+
+    # data_toTake = data_val
+    # y = np.zeros((stim.shape[0]+Ky.shape[0]-1,Ky.shape[1]))
+    # z = np.zeros((stim.shape[0]+Ky.shape[0]-1,Ky.shape[1]))
+    # for i in range(Ky.shape[1]):
+    #     y[:,i] = np.convolve(stim,Ky[:,i],'full')
+    #     z[:,i] = np.convolve(stim,Kz[:,i],'full')
+    # # y = np.convolve(stim,Ky,'full')
+    # # z = np.convolve(stim,Kz,'full')
+       
     # y = y[:stim.shape[0]]
     # z = z[:stim.shape[0]]
     
-    # adapt_out = (alpha[idx_param]*y)/(1+(beta[idx_param]*z))
+    # for i in range(tauC.shape[0]):
+    #     shift_amt = int(tauC[i])
+    #     z[:,i] = np.roll(z[:,i],-shift_amt)
+    #     y[:,i] = np.roll(y[:,i],-int(tauY[i]))
+    
+    # adapt_out = (alpha[None,:]*y)/(1e-3+(beta[None,:]*z))
+    
+    # plt.plot(stim[:1500]);plt.plot(alpha[idx_param]*y[:1500]);plt.show()
+    # plt.plot(lum_src[:1500]);plt.plot(beta[idx_param]*z[:1500]);plt.show()
+    # plt.plot(lum_obj[100:1100]);plt.plot(adapt_out[100:1100,5:]);plt.show()
+
     
     
     # # final_out_scaled = (adapt_out - adapt_out.mean()) / (np.var(adapt_out)**.5)

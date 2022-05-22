@@ -53,7 +53,7 @@ def fraction_of_explained_variance(obs_rate, est_rate):
 
     https://wikipedia.org/en/Fraction_of_variance_unexplained
     """
-    return 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(obs_rate, axis=0, keepdims=True)
+    return 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=0, keepdims=True)
 
 # def fraction_of_explained_variance(obs_rate, est_rate):
 #     """Fraction of explained variance
@@ -65,7 +65,7 @@ def fraction_of_explained_variance(obs_rate, est_rate):
 def fraction_of_explainable_variance_explained(obs_rate, est_rate,obs_noise):
     resid = obs_rate - est_rate
     mse_resid = np.mean(resid**2,axis=0)
-    var_test = np.var(obs_rate,axis=0)
+    var_test = np.var(est_rate,axis=0)
     fev_allUnits = 1 - ((mse_resid - obs_noise)/(var_test-obs_noise))
     fev_median = np.median(fev_allUnits)
     fev_std = np.std(fev_allUnits)

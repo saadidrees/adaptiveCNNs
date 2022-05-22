@@ -27,7 +27,7 @@ def model_definitions():
     models_3D = ('CNN_3D','PR_CNN3D')
     
     return (models_2D,models_3D)
- 
+
 def get_model_memory_usage(batch_size, model):
     
     """ 
@@ -408,13 +408,38 @@ def conv_oper_multichan(x,kernel_1D):
     kernel_reshaped = tf.tile(kernel_1D,(tile_fac))
     kernel_reshaped = tf.reshape(kernel_reshaped,(1,spatial_dims,kernel_1D.shape[0],kernel_1D.shape[-1]))
     kernel_reshaped = tf.experimental.numpy.moveaxis(kernel_reshaped,-2,0)
-    # pad_vec = [[0,0],[kernel_1D.shape[0]-1,0],[0,0],[0,0]]
-    pad_vec = [[0,0],[0,0],[0,0],[0,0]]
+    pad_vec = [[0,0],[kernel_1D.shape[0]-1,0],[0,0],[0,0]]
+    # pad_vec = [[0,0],[0,0],[0,0],[0,0]]
     # conv_output = tf.nn.depthwise_conv2d(x_reshaped,kernel_reshaped,strides=[1,1,1,1],padding=pad_vec,data_format='NHWC')
     conv_output = tf.nn.conv2d(x_reshaped,kernel_reshaped,strides=[1,1,1,1],padding=pad_vec,data_format='NHWC')
     # print(conv_output.shape)
     return conv_output
 
+@tf.function(autograph=True,experimental_relax_shapes=True)
+def roll_tensor(inp_tens,shift_vals):
+    out_tens = inp_tens[:,0:1,:,:,0]
+    # out_tens = inp_tens[:,:,:,:,0]
+    out_tens = out_tens[:,:,:,:,None]
+    print(shift_vals.shape)
+    # out_tens.write(0,inp_tens[:,0,:,:])
+    
+    for i in tf.range(0, shift_vals.shape[-1]):
+        tf.autograph.experimental.set_loop_options(
+                        shape_invariants=[(out_tens, tf.TensorShape([out_tens.shape[0], out_tens.shape[1], out_tens.shape[2], out_tens.shape[3],None]))])
+        # shift = shift_vals[0,i]-1                
+        rgb = inp_tens[:,-shift_vals[0,i],:,:,i]
+        tmp = rgb[:,tf.newaxis,:,:]
+        # rgb = inp_tens[:,:,:,:,i]
+        # tmp = tf.roll(rgb, shift=shift_vals[0,i], axis=1)
+        # tmp = tmp[:,0:1,:,:]
+        
+        out_tens = tf.concat([out_tens, tmp[:,:,:,:,None]], axis=-1)  # 
+    out_tens = out_tens[:,:,:,:,1:]
+    # out_tens = tf.transpose(out_tens,(1,0,2,3,4))
+    print(out_tens.shape)
+    return out_tens
+    
+    
 # ADD CONSTRAINTS
 class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
     def __init__(self,units=1,kernel_regularizer=None):
@@ -426,55 +451,60 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
     def build(self,input_shape):    # random inits
                
     
-        alpha_range = (0,1)
-        alpha_init = tf.keras.initializers.RandomUniform(minval=alpha_range[0],maxval=alpha_range[1]) 
-        self.alpha = self.add_weight(name='alpha',initializer=alpha_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
+        alpha_range = (0.001,0.1)
+        alpha_init = tf.keras.initializers.RandomUniform(minval=alpha_range[0],maxval=alpha_range[1]) #tf.keras.initializers.Constant(0.0159) 
+        self.alpha = self.add_weight(name='alpha',initializer=alpha_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,alpha_range[0],alpha_range[1]))
         alpha_mulFac = tf.keras.initializers.Constant(100.) 
         self.alpha_mulFac = self.add_weight(name='alpha_mulFac',initializer=alpha_mulFac,shape=[1,self.units],trainable=False)
         
-        beta_range = (0,1)
-        beta_init = tf.keras.initializers.RandomUniform(minval=beta_range[0],maxval=beta_range[1]) 
-        self.beta = self.add_weight(name='beta',initializer=beta_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
-        beta_mulFac = tf.keras.initializers.Constant(100.) 
+        beta_range = (0.001,0.1)
+        beta_init = tf.keras.initializers.RandomUniform(minval=beta_range[0],maxval=beta_range[1])  #tf.keras.initializers.Constant(0.02)# 
+        self.beta = self.add_weight(name='beta',initializer=beta_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,beta_range[0],beta_range[1]))
+        beta_mulFac = tf.keras.initializers.Constant(10.) 
         self.beta_mulFac = self.add_weight(name='beta_mulFac',initializer=beta_mulFac,shape=[1,self.units],trainable=False)
 
-        gamma_range = (0.00001,0.1)
-        gamma_init = tf.keras.initializers.RandomUniform(minval=gamma_range[0],maxval=gamma_range[1]) 
+        gamma_range = (0.01,0.1)
+        gamma_init = tf.keras.initializers.RandomUniform(minval=gamma_range[0],maxval=gamma_range[1])  #tf.keras.initializers.Constant(0.075)# 
         self.gamma = self.add_weight(name='gamma',initializer=gamma_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,gamma_range[0],gamma_range[1]))
         gamma_mulFac = tf.keras.initializers.Constant(10.) 
         self.gamma_mulFac = self.add_weight(name='gamma_mulFac',initializer=gamma_mulFac,shape=[1,self.units],trainable=False)
 
-        # zeta_range = (-1,1)
-        # zeta_init = tf.keras.initializers.RandomUniform(minval=zeta_range[0],maxval=zeta_range[1]) 
-        # self.zeta = self.add_weight(name='zeta',initializer=zeta_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer)
-        # zeta_mulFac = tf.keras.initializers.Constant(10.) 
-        # self.zeta_mulFac = self.add_weight(name='zeta_mulFac',initializer=zeta_mulFac,shape=[1,self.units],trainable=False)
-
-        tauY_range = (0.01,1.)
-        tauY_init = tf.keras.initializers.RandomUniform(minval=tauY_range[0],maxval=tauY_range[1]) 
+        tauY_range = (0.001,0.02)
+        tauY_init = tf.keras.initializers.RandomUniform(minval=tauY_range[0],maxval=tauY_range[1])  #tf.keras.initializers.Constant(0.01)# 
         self.tauY = self.add_weight(name='tauY',initializer=tauY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,tauY_range[0],tauY_range[1]))
         tauY_mulFac = tf.keras.initializers.Constant(100.) #tf.keras.initializers.Constant(10.) 
         self.tauY_mulFac = tf.Variable(name='tauY_mulFac',initial_value=tauY_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
-        
-        tauZ_range = (0.01,1.)
-        tauZ_init = tf.keras.initializers.RandomUniform(minval=tauZ_range[0],maxval=tauZ_range[1]) 
-        self.tauZ = self.add_weight(name='tauZ',initializer=tauZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,tauZ_range[0],tauZ_range[1]))
-        tauZ_mulFac = tf.keras.initializers.Constant(100.) 
-        self.tauZ_mulFac = tf.Variable(name='tauZ_mulFac',initial_value=tauZ_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
-        
-        
-        nY_range = (0.0,0.5)
-        nY_init = tf.keras.initializers.RandomUniform(minval=nY_range[0],maxval=nY_range[1]) 
+ 
+        nY_range = (1e-5,0.1)
+        nY_init = tf.keras.initializers.RandomUniform(minval=nY_range[0],maxval=nY_range[1]) #tf.keras.initializers.Constant(0.01)# 
         self.nY = self.add_weight(name='nY',initializer=nY_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,nY_range[0],nY_range[1]))
         nY_mulFac = tf.keras.initializers.Constant(10.) 
         self.nY_mulFac = tf.Variable(name='nY_mulFac',initial_value=nY_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
-        
-        nZ_range = (0.0,0.5)
-        nZ_init = tf.keras.initializers.RandomUniform(minval=nZ_range[0],maxval=nZ_range[1]) 
-        self.nZ = self.add_weight(name='nZ',initializer=nZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,nZ_range[0],nZ_range[1]))
+
+
+        tauZ_range = (0.3,1.)
+        tauZ_init = tf.keras.initializers.RandomUniform(minval=tauZ_range[0],maxval=tauZ_range[1]) #tf.keras.initializers.Constant(0.5)# 
+        self.tauZ = self.add_weight(name='tauZ',initializer=tauZ_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,tauZ_range[0],tauZ_range[1]))
+        tauZ_mulFac = tf.keras.initializers.Constant(100.) 
+        self.tauZ_mulFac = tf.Variable(name='tauZ_mulFac',initial_value=tauZ_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
+                
+        nZ_range = (1e-5,1.)
+        nZ_init = tf.keras.initializers.Constant(0.01) #tf.keras.initializers.RandomUniform(minval=nZ_range[0],maxval=nZ_range[1])  #tf.keras.initializers.Constant(0.01)# 
+        self.nZ = self.add_weight(name='nZ',initializer=nZ_init,shape=[1,self.units],trainable=False,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,nZ_range[0],nZ_range[1]))
         nZ_mulFac = tf.keras.initializers.Constant(10.) 
         self.nZ_mulFac = tf.Variable(name='nZ_mulFac',initial_value=nZ_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
     
+        tauC_range = (0.01,0.5)
+        tauC_init = tf.keras.initializers.RandomUniform(minval=tauC_range[0],maxval=tauC_range[1])  #tf.keras.initializers.Constant(0.2)# 
+        self.tauC = self.add_weight(name='tauC',initializer=tauC_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,tauC_range[0],tauC_range[1]))
+        tauC_mulFac = tf.keras.initializers.Constant(100.) 
+        self.tauC_mulFac = tf.Variable(name='tauC_mulFac',initial_value=tauC_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
+                
+        nC_range = (1e-5,0.5)
+        nC_init = tf.keras.initializers.Constant(0.01) # tf.keras.initializers.RandomUniform(minval=nC_range[0],maxval=nC_range[1]) # 
+        self.nC = self.add_weight(name='nC',initializer=nC_init,shape=[1,self.units],trainable=False,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,nC_range[0],nC_range[1]))
+        nC_mulFac = tf.keras.initializers.Constant(10.) 
+        self.nC_mulFac = tf.Variable(name='nC_mulFac',initial_value=nC_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
     
     def call(self,inputs):
        
@@ -486,24 +516,61 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
         # zeta = self.zeta*self.zeta_mulFac
         tau_y =  (self.tauY_mulFac*self.tauY) / timeBin
         tau_z =  (self.tauZ_mulFac*self.tauZ) / timeBin
+        tau_c =  (self.tauC_mulFac*self.tauC) / timeBin
         n_y =  (self.nY_mulFac*self.nY)
         n_z =  (self.nZ_mulFac*self.nZ)
+        n_c =  (self.nC_mulFac*self.nC)
         
         t = tf.range(0,inputs.shape[1],dtype='float32')
         
         Ky = generate_simple_filter_multichan(tau_y,n_y,t)   
-        Kz = (gamma*Ky) + ((1-gamma) * generate_simple_filter_multichan(tau_z,n_z,t))
+        Kc = generate_simple_filter_multichan(tau_c,n_c,t)  
+        Kz = generate_simple_filter_multichan(tau_z,n_z,t)  
+        Kz = (gamma*Kc) + ((1-gamma) * Kz)
         
         y_tf = conv_oper_multichan(inputs,Ky)
         z_tf = conv_oper_multichan(inputs,Kz)
-                
-        y_tf_reshape = tf.reshape(y_tf,(-1,y_tf.shape[1],y_tf.shape[2],inputs.shape[-1],alpha.shape[-1]))
-        z_tf_reshape = tf.reshape(z_tf,(-1,z_tf.shape[1],z_tf.shape[2],inputs.shape[-1],alpha.shape[-1]))
+        
+               
+        y_tf_reshape = tf.reshape(y_tf,(-1,y_tf.shape[1],y_tf.shape[2],inputs.shape[-1],tau_z.shape[-1]))
+        z_tf_reshape = tf.reshape(z_tf,(-1,z_tf.shape[1],z_tf.shape[2],inputs.shape[-1],tau_z.shape[-1]))
+        print(z_tf_reshape.shape)
+        
+        y_shift = tf.math.argmax(Ky,axis=1);y_shift = tf.cast(y_shift,tf.int32)
+        z_shift = tf.math.argmax(Kz,axis=1);z_shift = tf.cast(z_shift,tf.int32)
+        
+        y_tf_reshape = roll_tensor(y_tf_reshape,y_shift)
+        z_tf_reshape = roll_tensor(z_tf_reshape,z_shift)
+       #  y_tf_reshape = tf.gather_nd(y_tf_reshape,y_shift[None,None,None,:,:],batch_dims=4)
+        
+        
+       #  z_tf_reshape = tf.reshape(z_tf,(-1,z_tf.shape[1],z_tf.shape[2],inputs.shape[-1],tau_z.shape[-1]))
+       #  print(z_tf_reshape.shape)
+       #  z_tf_reshape = tf.slice(z_tf_reshape,z_shift[None,None,None,:,:])
+       #  print(z_tf_reshape.shape)
+        
+       #  mask = np.zeros(z_tf_reshape.shape[1:],dtype='int32')
+       #  for i in tf.range(0, z_shift.shape[-1]):
+       #     mask[z_shift[0,i],:,:,i] = 1
+       # mask = tf.convert_to_tensor(mask,dtype='int32')
+    
+       #  rgb = tf.ragged.boolean_mask(z_tf_reshape,mask[None,:,:,:,:])
+       #  rgb = tf.cast(rgb,tf.float32)
+       #  rgb = tf.transpose(rgb,perm=(1,0,2,3))
+        
+    
+        # z_tf_reshape = tf.slice(z_tf_reshape,mask,1)
+            # print(rgb.shape)
+
+        # y_tf_reshape = y_tf_reshape[:,tf.newaxis,:,:,:]
+        # z_tf_reshape = z_tf_reshape[:,tf.newaxis,:,:,:]
+        
     
         # outputs = zeta[None,None,:,None,:] + (alpha[None,None,:,None,:]*y_tf_reshape)/(1+(beta[None,None,:,None,:]*z_tf_reshape))
-        outputs = (alpha[None,None,:,None,:]*y_tf_reshape)/(1+(beta[None,None,:,None,:]*z_tf_reshape))
-        
+        outputs = (alpha[None,None,:,None,:]*y_tf_reshape)/(1e-3+(beta[None,None,:,None,:]*z_tf_reshape))
         outputs = outputs[:,:,0,:,:]
+        
+        # print(outputs.shape)
         
         return outputs
 
@@ -621,13 +688,14 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
     y = Reshape((inputs.shape[1],inputs.shape[-2]*inputs.shape[-1]))(y)
     y = photoreceptor_DA_multichan_randinit(units=chan1_n,kernel_regularizer=l2(1e-4))(y)
     # y = photoreceptor_DA_multichan_randinit(units=chan1_n)(y)
+    # y = Reshape((inputs.shape[-3],inputs.shape[-2],inputs.shape[-1],chan1_n))(y)
     y = Reshape((1,inputs.shape[-2],inputs.shape[-1],chan1_n))(y)
     y = Permute((4,2,3,1))(y)   # Channels first
-    y = y[:,:,:,:,-1]       # only take the last time point
+    y = y[:,:,:,:,0]       # only take the first time point
     
-    if BatchNorm==True:
-        rgb = y.shape[1:]
-        y = Reshape(rgb)(BatchNormalization(axis=-1)(Flatten()(y)))
+    # if BatchNorm==True:
+    #     rgb = y.shape[1:]
+    #     y = Reshape(rgb)(BatchNormalization(axis=-1)(Flatten()(y)))
 
 
     if chan1_n==1 and chan2_n<1:
