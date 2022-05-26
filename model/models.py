@@ -163,72 +163,6 @@ def modelFileName(U=0,P=0,T=0,C1_n=0,C1_s=0,C1_3d=0,N_layers=0,C2_n=0,C2_s=0,C2_
     
     return fname_model,dict_params
 
-# %% Standard models
-def CNN2D_DW(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=13, chan2_n=0, filt2_size=0, chan3_n=0, filt3_size=0, BatchNorm=True, BatchNorm_train=False, MaxPool=False):
-    
-    filt_temporal_width=kwargs['filt_temporal_width']
-    chan1_n = kwargs['chan1_n']
-    filt1_size = kwargs['filt1_size']
-    chan2_n = kwargs['chan2_n']
-    filt2_size = kwargs['filt2_size']
-    chan3_n = kwargs['chan3_n']
-    filt3_size = kwargs['filt3_size']
-    BatchNorm = bool(kwargs['BatchNorm'])
-    MaxPool = bool(kwargs['MaxPool'])
-
-    
-    sigma = 0.1
-    
-
-    # first layer  
-    if BatchNorm is True:
-        y = inputs
-        y = DepthwiseConv2D(depth_multiplier=chan1_n, kernel_size=filt1_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(y)
-        y = BatchNormalization(axis=-1)(y)
-    else:
-        y = DepthwiseConv2D(depth_multiplier=chan1_n, kernel_size=filt1_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(inputs)
-    y = y[:,inputs.shape[1]-filt_temporal_width:,:,:]
-
-    # y = Activation('relu')(y) #(GaussianNoise(sigma)(y))
-    # outputs = Activation('softplus')(y)
-    y = y[:,-1,:,:]
-    y = Flatten()(y)
-    outputs = Activation('softplus')(y)
-    # outputs = y
-
-
-    # second layer
-    if chan2_n>0:
-        y = DepthwiseConv2D(depth_multiplier=chan2_n, kernel_size=filt2_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(y)
-        # y = Conv2D(chan2_n, filt2_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(y)                  
-
-        if BatchNorm is True: 
-            n1 = int(y.shape[-1])
-            n2 = int(y.shape[-2])
-            y = Reshape((chan1_n, n2, n1))(BatchNormalization(axis=-1)(Flatten()(y)))
-        y = Activation('relu')(y) #(GaussianNoise(sigma)(y))
-
-    # Third layer
-    if chan3_n>0:
-        y = Conv2D(chan3_n, filt3_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(y)       
-
-        if BatchNorm is True: 
-            
-            n1 = int(y.shape[-1])
-            n2 = int(y.shape[-2])
-            y = Reshape((chan2_n, n2, n1))(BatchNormalization(axis=-1)(Flatten()(y)))
-
-        y = Activation('relu')(y) #(GaussianNoise(sigma)(y))
-        
-        
-    # y = Flatten()(y)
-    # if BatchNorm is True: 
-    #     y = BatchNormalization(axis=-1)(y)
-    # y = Dense(n_out, kernel_initializer='normal', kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-3))(y)
-    # outputs = Activation('softplus')(y)
-
-    mdl_name = 'CNN2D_DW'
-    return Model(inputs, outputs, name=mdl_name)
 
 
 def CNN2D(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=13, chan2_n=0, filt2_size=0, chan3_n=0, filt3_size=0, BatchNorm=True, BatchNorm_train=False, MaxPool=False):
@@ -286,7 +220,7 @@ def CNN2D(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=13, ch
     mdl_name = 'CNN2D'
     return Model(inputs, outputs, name=mdl_name)
 
-def CNN2D_DENSE(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=13, chan2_n=0, filt2_size=0, chan3_n=0, filt3_size=0, BatchNorm=True, BatchNorm_train=False, MaxPool=False):
+def CNN_DENSE(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=13, chan2_n=0, filt2_size=0, chan3_n=0, filt3_size=0, BatchNorm=True, BatchNorm_train=False, MaxPool=False):
     
     chan1_n = kwargs['chan1_n']
     filt1_size = kwargs['filt1_size']
@@ -303,8 +237,8 @@ def CNN2D_DENSE(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=
 
     # first layer  
     y = Conv2D(chan1_n, filt1_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(inputs)
-    if BatchNorm is True:
-        y = BatchNormalization(axis=-1)(y)
+    # if BatchNorm is True:
+    #     y = BatchNormalization(axis=-1)(y)
     y = Activation('relu')(y)
     
     if chan1_n==1 and chan2_n<1:
