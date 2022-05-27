@@ -231,14 +231,22 @@ def CNN_DENSE(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=13
     BatchNorm = bool(kwargs['BatchNorm'])
     MaxPool = bool(kwargs['MaxPool'])
     N_layers = kwargs['N_layers']
+    
+    if N_layers>2:
+        N_half = int(chan2_n/2)
+        rgb = (np.linspace(0,N_half,int(N_layers/2)+2)/1).astype('int32')
+        rgb = rgb[1:]
+        N_arr_dense = np.concatenate((rgb,np.flip(rgb[:-1])))
+        N_arr_dense = N_arr_dense[:N_layers]
+
 
     sigma = 0.1
     filt_temporal_width=inputs.shape[1]
 
     # first layer  
     y = Conv2D(chan1_n, filt1_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(inputs)
-    # if BatchNorm is True:
-    #     y = BatchNormalization(axis=-1)(y)
+    if BatchNorm is True:
+        y = BatchNormalization(axis=-1)(y)
     y = Activation('relu')(y)
     
     if chan1_n==1 and chan2_n<1:
@@ -249,9 +257,14 @@ def CNN_DENSE(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=13
         if N_layers>0:
             for i in range(N_layers):
                 y = Flatten()(y)
+                if N_layers>2:
+                    # y = Dense(N_arr_dense[i], kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                    y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                else:
+                    y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+
                 if BatchNorm is True: 
                     y = BatchNormalization()(y)
-                y = Dense(chan2_n, kernel_initializer='normal', kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-3))(y)
                 y = Activation('relu')(y)
                           
     y = Flatten()(y)
@@ -485,7 +498,15 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
     N_layers = kwargs['N_layers']
     dropout_rate = kwargs['dropout']
     
-    arr_dense = np.arange(100,100*N_layers+100,100)
+    if N_layers>2:
+        N_half = int(chan2_n/2)
+        rgb = (np.linspace(0,N_half,int(N_layers/2)+2)/1).astype('int32')
+        rgb = rgb[1:]
+        N_arr_dense = np.concatenate((rgb,np.flip(rgb[:-1])))
+        N_arr_dense = N_arr_dense[:N_layers]
+
+
+
     
     y = inputs
     y = Reshape((inputs.shape[1],inputs.shape[-2]*inputs.shape[-1]))(y)
@@ -512,8 +533,12 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
             y = Flatten()(y)
             
             for i in range(N_layers):
-                y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
-                # y = Dense(arr_dense[i], kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                if N_layers>2:
+                    # y = Dense(N_arr_dense[i], kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                    y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                else:
+                    y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+
                 if dropout_rate>0:
                     y = Dropout(dropout_rate)(y)
 
