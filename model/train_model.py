@@ -36,11 +36,10 @@ def chunker(data,batch_size,mode='default'):
         
 def lr_scheduler(epoch,lr):
     # [epoch,lr divide factor]
-    arr_scheduler = np.array([[5,10],
-                              [10,10],
+    arr_scheduler = np.array([[3,10],
                               [20,10],
-                              [30,10],
-                              [45,10]])
+                              [50,10],
+                              [90,10]])
     
     idx = np.where(arr_scheduler[:,0]==epoch)[0]
     
@@ -97,7 +96,7 @@ def train(mdl, data_train, data_val,fname_excel,path_model_save, fname_model, bz
 
     if USE_CHUNKER==0:  # load all data into gpu ram
         mdl_history = mdl.fit(x=data_train.X, y=data_train.y, batch_size=bz, epochs=nb_epochs,
-                              callbacks=cbs, validation_data=(data_val.X,data_val.y), validation_freq=validation_freq, shuffle=False, initial_epoch=initial_epoch,use_multiprocessing=True)    # validation_batch_size=validation_batch_size,  validation_data=(data_test.X,data_test.y)   validation_data=(data_val.X,data_val.y)   validation_batch_size=math.floor(n_val)
+                              callbacks=cbs, validation_data=(data_val.X,data_val.y), validation_freq=validation_freq, shuffle=True, initial_epoch=initial_epoch,use_multiprocessing=True)    # validation_batch_size=validation_batch_size,  validation_data=(data_test.X,data_test.y)   validation_data=(data_val.X,data_val.y)   validation_batch_size=math.floor(n_val)
         
     else:
         batch_size = bz
