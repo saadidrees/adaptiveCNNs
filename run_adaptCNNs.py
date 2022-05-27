@@ -75,27 +75,30 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
     mean_src = 5
     timeBin_src = temporal_width #500
-    dur_src = np.array([30,40,50,60,70])  #np.array([30,40,50,60,70]) 
-    amp_src = np.array([20,30,40,50]) #np.array([10,20,30,40])
+    dur_src = np.array([40,60,80])  #np.array([40,60,80]) 
+    amp_src = np.array([10,50,100]) #np.array([20,30,40,50])
     frac_perturb = 1
 
     
-    lum_obj,lum_src,_ = stimuli.obj_source_multi(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
+    lum_obj,lum_src = stimuli.obj_source_multi(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
                                                           timeBin_src = timeBin_src,mean_src=mean_src,amp_src=amp_src,dur_src=dur_src,
                                                           sigma=sigma,temporal_width=temporal_width,frac_perturb=frac_perturb)
 
 
 
     stim = lum_obj*lum_src
-    resp = lum_obj[:,-1]
+    resp = lum_obj
+    
+    # del lum_obj, lum_src
+    
+    idx_plots = np.arange(200,2200)
+    plt.plot(lum_src[idx_plots])
+    plt.plot(lum_obj[idx_plots])
+    plt.show()
+    plt.plot(stim[idx_plots])
     
     del lum_obj, lum_src
-    
-    idx_plots = np.arange(200,250)
-    # plt.plot(lum_src[idx_plots].T)
-    # plt.plot(lum_obj[idx_plots].T)
-    # plt.show()
-    plt.plot(stim[idx_plots].T)
+
         
     # % Datasets
     frac_train = 0.90
@@ -128,22 +131,38 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
     # % Prepare data
     # % Arrange the data
+    # X = dict_train['X']
+    # X = np.reshape(X,(int(X.shape[0]/temporal_width),int(temporal_width)),order='C')
+    # X = X[:,:,np.newaxis,np.newaxis]
+    # y = dict_train['y']
+    # y = np.reshape(y,(int(y.shape[0]/temporal_width),int(temporal_width)),order='C')
+    # y = y[:,-1] #    y = y[:,-1]
+
     X = dict_train['X']
+    X = rolling_window(X,temporal_width)
     X = X[:,:,np.newaxis,np.newaxis]
     y = dict_train['y']
+    y = rolling_window(y,temporal_width)
+    y = y[:,-1] #    y = y[:,-1]
+    
     if y.ndim==1:
         y = y[:,np.newaxis]
     data_train = Exptdata(X,y)
     
     X = dict_val['X']
+    X = rolling_window(X,temporal_width)
     X = X[:,:,np.newaxis,np.newaxis]
+
     y = dict_val['y']
+    y = rolling_window(y,temporal_width)
+    y = y[:,-1] #y = y[:,-1]
     if y.ndim==1:
         y = y[:,np.newaxis]
     data_val = Exptdata(X,y)
     
     inputs = Input(data_train.X.shape[1:]) # keras input layer
     n_out = data_train.y.shape[1]         # number of units in output layer
+
     
     del X, y
 
@@ -235,7 +254,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
     
     # y_pred = mdl.predict(data_val.X)
-    # idx_plots = np.arange(100,1000)
+    # idx_plots = np.arange(0,data_val.X.shape[0])
     # plt.plot(data_val.X[idx_plots,-1,0,0])
     # plt.plot(mean_src*data_val.y[idx_plots],'darkorange')
     # plt.plot(mean_src*y_pred[idx_plots],'r')

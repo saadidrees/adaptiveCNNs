@@ -47,63 +47,53 @@ def sin_mul(totalTime,freq_obj=5,amp_obj=1,offset_obj=1,freq_src=1,amp_src=1,off
     
     return stim,resp,lum_src,lum_obj
 
+def obj_source_multi(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_src = 50,mean_src=10,amp_src=5,dur_src=50,sigma=1,temporal_width=0,frac_perturb=1):
     
-def obj_source_multi_old(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_src = 50,mean_src=10,amp_src=5,dur_src=50,sigma=1,temporal_width=0,frac_perturb=1):
+    nsamps_obj =  int(totalTime*60*1000/timeBin_obj)+temporal_width
+    lum_obj = np.random.normal(mean_obj,amp_obj,nsamps_obj)
+    lum_obj = np.repeat(lum_obj,timeBin_obj)
+    lum_obj = gaussian_filter(lum_obj,sigma=sigma)
     
-    nsamps_obj =  int(totalTime*1000) + temporal_width
-    lum_obj_temp = np.random.normal(mean_obj,amp_obj,nsamps_obj)
-    lum_obj_temp = np.repeat(lum_obj_temp,timeBin_obj)
-    lum_obj_temp = gaussian_filter(lum_obj_temp,sigma=sigma)
     
-    lum_obj = rolling_window(lum_obj_temp,temporal_width)
+    lum_obj_temp = np.reshape(lum_obj,(int(lum_obj.shape[0]/temporal_width),int(temporal_width)),order='C')
+    lum_obj_rever = np.reshape(lum_obj_temp,lum_obj.shape[0],order='C')
+    assert np.sum(abs(lum_obj-lum_obj_rever))==0
     
+    range_shift = np.arange((2*timeBin_obj),timeBin_src-dur_src.max()-(2*timeBin_obj),timeBin_obj,dtype='int32')
+
     total_conds = dur_src.size * amp_src.size
     step_block = np.zeros((timeBin_src,total_conds))
-    dur_amp_id = np.zeros((total_conds,2))
+    dur_amp_shift_id = np.zeros((total_conds,2))
     cntr = -1
     for i in range(dur_src.size):
         for j in range(amp_src.size):
+            # for k in range_shift:
             cntr+=1
-            dur_amp_id[cntr,0] = dur_src[i]
-            dur_amp_id[cntr,1] = amp_src[j]
+            dur_amp_shift_id[cntr,0] = dur_src[i]
+            dur_amp_shift_id[cntr,1] = amp_src[j]
+            # dur_amp_shift_id[cntr,2] = k
             rgb = mean_src*np.ones((timeBin_src))
             rgb[:dur_src[i]] = amp_src[j]
-            # rgb = gaussian_filter(rgb,sigma=sigma)
-            # cent = int((timeBin_src-dur_src[i])/2)
-            # rgb = np.roll(rgb,cent)
+            shift = int((temporal_width - dur_src[i])/2)
+            rgb = np.roll(rgb,shift)
             step_block[:,cntr] = rgb
             
-    n_reps = int(lum_obj.shape[0]/total_conds) #int(np.ceil(N_perturb/step_block.shape[-1]))
-    
-    range_shift = np.arange((2*timeBin_obj),timeBin_src-dur_src.max()-(2*timeBin_obj),timeBin_obj,dtype='int32')
-    
-    lum_src = np.zeros((lum_obj.shape[0],lum_obj.shape[1]))
-    cntr = -1
-    # step_block_seq = np.zeros((N_perturb,timeBin_src))
-    for i in range(n_reps):
-        shift = np.random.choice(range_shift)
-        conds_array = np.arange(0,total_conds)
-        conds_array = np.random.permutation(conds_array)
-        
-        for j in range(conds_array.size):
-            cntr+=1
-            
-            src = np.roll(step_block[:,conds_array[j]],shift)
-            lum_src[cntr,:] = src
-            # lum_obj_perturbed[cntr,:] = lum_obj_perturbed[cntr,:]*src
-            
+    n_reps = int(np.ceil(lum_obj_temp.shape[0]/total_conds)) #int(np.ceil(N_perturb/step_block.shape[-1]))
+    lum_src = np.tile(step_block,[1,n_reps])
+    lum_src = np.moveaxis(lum_src,0,-1)
+    lum_src = lum_src[:lum_obj_temp.shape[0],:]
+               
     lum_src = gaussian_filter1d(lum_src,sigma=sigma,axis=-1)
     idx_rand = np.random.permutation(np.arange(lum_src.shape[0]))
     lum_src = lum_src[idx_rand,:]
+    
+    lum_src = np.reshape(lum_src,lum_obj.shape[0],order='C')
+   
+    # lum_obj_perturb = lum_obj*lum_src
+    
+    return lum_obj,lum_src
 
-    assert lum_obj.shape[0] == lum_src.shape[0]
-    
-    lum_obj_perturb = lum_obj*lum_src
-    
-    return lum_obj,lum_src,lum_obj_perturb
-    
-
-def obj_source_multi(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_src = 50,mean_src=10,amp_src=5,dur_src=50,sigma=1,temporal_width=0,frac_perturb=1):
+def obj_source_multi_old(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_src = 50,mean_src=10,amp_src=5,dur_src=50,sigma=1,temporal_width=0,frac_perturb=1):
     
     nsamps_obj =  int(totalTime*1000) + temporal_width
     lum_obj_temp = np.random.normal(mean_obj,amp_obj,nsamps_obj)
