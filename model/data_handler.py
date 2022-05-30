@@ -610,17 +610,18 @@ def prepare_data_convLSTM(data,filt_temporal_width,idx_unitsToTake):
 
     
 
-def save_h5Dataset(fname,data_train,data_val,data_test,data_quality,dataset_rr,parameters,resp_orig=None,data_train_info=None,data_val_info=None):
+def save_h5Dataset(fname,data_train,data_val,data_test=None,data_quality=None,dataset_rr=None,parameters=None,resp_orig=None,data_train_info=None,data_val_info=None):
     
-    f = h5py.File(fname,'a')
-       
-    grp = f.create_group('/data_quality')
-    keys = list(data_quality.keys())
-    for i in range(len(data_quality)):
-        if data_quality[keys[i]].dtype == 'O':
-            grp.create_dataset(keys[i], data=np.array(data_quality[keys[i]],dtype='bytes'))        
-        else:
-            grp.create_dataset(keys[i], data=data_quality[keys[i]])
+    f = h5py.File(fname,'w')
+      
+    if data_quality != None:
+        grp = f.create_group('/data_quality')
+        keys = list(data_quality.keys())
+        for i in range(len(data_quality)):
+            if data_quality[keys[i]].dtype == 'O':
+                grp.create_dataset(keys[i], data=np.array(data_quality[keys[i]],dtype='bytes'))        
+            else:
+                grp.create_dataset(keys[i], data=data_quality[keys[i]])
             
             
     if type(data_train) is dict:    # if the training set is divided into multiple datasets then create a group for each
@@ -637,11 +638,6 @@ def save_h5Dataset(fname,data_train,data_val,data_test,data_quality,dataset_rr,p
             f['data_train']['y'][-data_train[data_train_keys[i]].y.shape[0]:] = data_train[data_train_keys[i]].y
 
 
-    # if type(data_train) is dict:    # if the training set is divided into multiple datasets then create a group for each
-    #     for i in data_train.keys():
-    #         grp = f.create_group('/'+i)
-    #         grp.create_dataset('X',data=data_train[i].X,compression='gzip')
-    #         grp.create_dataset('y',data=data_train[i].y,compression='gzip')
             
     else:
         grp = f.create_group('/data_train')
@@ -666,10 +662,6 @@ def save_h5Dataset(fname,data_train,data_val,data_test,data_quality,dataset_rr,p
         grp.create_dataset('X',data=data_val.X,compression='gzip')
         grp.create_dataset('y',data=data_val.y,compression='gzip')
     
-    if data_test != None:  # data_test is None if it does not exist. So if it doesn't exist, don't save it.
-        grp = f.create_group('/data_test')
-        grp.create_dataset('X',data=data_test.X,compression='gzip')
-        grp.create_dataset('y',data=data_test.y,compression='gzip')
         
     # Training data info
     if type(data_train_info)==dict: # if the training set is divided into multiple datasets
@@ -698,32 +690,12 @@ def save_h5Dataset(fname,data_train,data_val,data_test,data_quality,dataset_rr,p
         for j in info_keys:
             grp.create_dataset(j,data=data_val_info[i][j])
 
-    
-    if dataset_rr != None:
-        grp = f.create_group('/dataset_rr')
-        keys = list(dataset_rr.keys())
-        for j in keys:
-            grp = f.create_group('/dataset_rr/'+j)
-            keys_2 = list(dataset_rr[j].keys())
-            for i in range(len(keys_2)):
-                if 'bytes' in dataset_rr[j][keys_2[i]].dtype.name:
-                    grp.create_dataset(keys_2[i], data=dataset_rr[j][keys_2[i]])
-                elif dataset_rr[j][keys_2[i]].dtype == 'O':
-                    grp.create_dataset(keys_2[i], data=np.array(dataset_rr[j][keys_2[i]],dtype='bytes'))
-                else:
-                    grp.create_dataset(keys_2[i], data=dataset_rr[j][keys_2[i]],compression='gzip')
                 
-            
-    grp = f.create_group('/parameters')   
-    keys = list(parameters.keys())
-    for i in range(len(parameters)):
-        grp.create_dataset(keys[i], data=parameters[keys[i]]) 
-        
-    if resp_orig != None:
-        grp = f.create_group('/resp_orig')
-        keys = list(resp_orig.keys())
-        for i in keys:
-            grp.create_dataset(i, data=resp_orig[i],compression='gzip') 
+    if parameters != None:
+        grp = f.create_group('/parameters')   
+        keys = list(parameters.keys())
+        for i in range(len(parameters)):
+            grp.create_dataset(keys[i], data=parameters[keys[i]]) 
             
     f.close()
     
