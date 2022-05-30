@@ -76,7 +76,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     mean_src = 5
     timeBin_src = temporal_width #500
     dur_src = np.array([40,60,80])  #np.array([40,60,80]) 
-    amp_src = np.array([10,50,100]) #np.array([20,30,40,50])
+    amp_src = np.array([10,100,1000]) #np.array([20,30,40,50])
     frac_perturb = 1
 
     
