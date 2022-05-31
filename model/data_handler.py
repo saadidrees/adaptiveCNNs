@@ -702,25 +702,15 @@ def save_h5Dataset(fname,data_train,data_val,data_test=None,data_quality=None,da
 def load_h5Dataset(fname,LOAD_TR=True,LOAD_VAL=True,LOAD_ALL_TR=False,nsamps_val=-1,nsamps_train=-1,RETURN_VALINFO=False):     # LOAD_TR determines whether to load training data or not. In some cases only validation data is required
     
     f = h5py.File(fname,'r')
-    t_frame = np.array(f['parameters']['t_frame'])
     # some loading parameters
     if nsamps_val==-1 or nsamps_val==0:
         idx_val_start = 0
         idx_val_end = -1
-    else:
-        nsamps_val = int((nsamps_val*60*1000)/t_frame)      # nsamps arg is in minutes so convert to samples
-        idx_val_start = 1000
-        idx_val_end = idx_val_start+nsamps_val
         
         
     if nsamps_train==-1 or nsamps_train==0 :
         idx_train_start = 0
         idx_train_end = -1
-    else:
-        LOAD_ALL_TR = False
-        nsamps_train = int((nsamps_train*60*1000)/t_frame)
-        idx_train_start = 1000
-        idx_train_end = idx_train_start+nsamps_train
 
     
     Exptdata = namedtuple('Exptdata', ['X', 'y'])
@@ -798,87 +788,27 @@ def load_h5Dataset(fname,LOAD_TR=True,LOAD_VAL=True,LOAD_ALL_TR=False,nsamps_val
 
         
         
-    
-    # Testing data
-    if 'data_test' in f.keys():
-        data_test = Exptdata(np.array(f['data_test']['X']),np.array(f['data_test']['y']))
-    else:       
-        data_test = None
-    
-    # Quality data
-    select_groups = ('data_quality')
-    level_keys = list(f[select_groups].keys())
-    data_quality = {}
-    for i in level_keys:
-        data_key = '/'+select_groups+'/'+i
-        rgb = np.array(f[data_key])
-        rgb_type = rgb.dtype.name
-           
-        if 'bytes' in rgb_type:
-            data_quality[i] = utils_si.h5_tostring(rgb)
-        else:
-            data_quality[i] = rgb
-            
-    # Retinal reliability data
-    select_groups = ('dataset_rr')
-    level_keys = list(f[select_groups].keys())
-    dataset_rr = {}
-    for i in level_keys:
-        level4_keys = list(f[select_groups][i].keys())
-        temp_2 = {}
-
-        for d in level4_keys:
-            data_key ='/'+select_groups+'/'+i+'/'+d
-        
-            rgb = np.array(f[data_key])
-            try:
-                rgb_type = rgb.dtype.name
-                if 'bytes' in rgb_type:
-                    temp_2[d] = utils_si.h5_tostring(rgb)
-                else:
-                    temp_2[d] = rgb
-            except:
-                temp_2[d] = rgb
-        dataset_rr[i] = temp_2
-        
     # Parameters
-    select_groups = ('parameters')
-    level_keys = list(f[select_groups].keys())
-    parameters = {}
-    for i in level_keys:
-        data_key = '/'+select_groups+'/'+i
-        rgb = np.array(f[data_key])
-        rgb_type = rgb.dtype.name
-           
-        if 'bytes' in rgb_type:
-            parameters[i] = utils_si.h5_tostring(rgb)
-        else:
-            parameters[i] = rgb
-    
-    # Orig response (non normalized)
-    try:
-        select_groups = ('resp_orig')
+    if 'parameters' in f.keys():
+        select_groups = ('parameters')
         level_keys = list(f[select_groups].keys())
-        resp_orig = {}
+        parameters = {}
         for i in level_keys:
             data_key = '/'+select_groups+'/'+i
             rgb = np.array(f[data_key])
             rgb_type = rgb.dtype.name
                
             if 'bytes' in rgb_type:
-                resp_orig[i] = utils_si.h5_tostring(rgb)
+                parameters[i] = utils_si.h5_tostring(rgb)
             else:
-                resp_orig[i] = rgb
-    except:
-        resp_orig = None
-
-            
+                parameters[i] = rgb
+                
+    else:
+        parameters = None
+                
     f.close()
 
-    if RETURN_VALINFO==False:
-        return data_train,data_val,data_test,data_quality,dataset_rr,parameters,resp_orig
-    else:
-        return data_train,data_val,data_test,data_quality,dataset_rr,parameters,resp_orig,data_val_info
+    return data_train,data_val,parameters
     
     
 def check_trainVal_contamination(stimFrames_train,stimFrames_val,filt_temporal_width):
