@@ -38,14 +38,13 @@ def lr_scheduler(epoch,lr):
     # [epoch,lr divide factor]
     arr_scheduler = np.array([[3,10],
                               [15,10],
-                              [70,10],
-                              [90,10]])
+                              [50,10],
+                              [80,2],
+                              [100,2],
+                              [120,2],
+                              [140,2],
+                              [160,2]])
     
-    # arr_scheduler = np.array([[3,10],
-    #                           [20,10],
-    #                           [50,10],
-    #                           [90,10]])
-
     
     idx = np.where(arr_scheduler[:,0]==epoch)[0]
     
