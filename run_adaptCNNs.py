@@ -65,7 +65,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     else:
         totalTime = 10 # mins
     
-    if int(fname_data_train_val_test) == 0:
+    if fname_data_train_val_test == '0':
         fname_data_train_val_test = ''
         
     if fname_data_train_val_test != '':
