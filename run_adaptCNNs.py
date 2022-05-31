@@ -19,7 +19,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
                             nb_epochs=100,bz_ms=10000,trainingSamps_dur=0,validationSamps_dur=0,
                             BatchNorm=1,BatchNorm_train=0,MaxPool=1,c_trial=1,
                             lr=0.01,lr_fac=1,use_lrscheduler=1,use_batchLogger=0,USE_CHUNKER=0,CONTINUE_TRAINING=1,info='',
-                            path_dataset_base='/home/saad/data/analyses/data_kiersten'):
+                            path_dataset_base=''):
 
 # %%
     import numpy as np
@@ -220,9 +220,9 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
             os.makedirs(path_model_save)
 
 
-        if fname_data_train_val_test == '':
-            fname_savedataset = os.path.join(path_model_save,'stimuli.h5')
-            save_h5Dataset(fname_savedataset,data_train,data_val,parameters=parameters)
+        # if fname_data_train_val_test == '':
+        #     fname_savedataset = os.path.join(path_model_save,'stimuli.h5')
+        #     save_h5Dataset(fname_savedataset,data_train,data_val,parameters=parameters)
         
     
         model_func = getattr(model.models,mdl_name)

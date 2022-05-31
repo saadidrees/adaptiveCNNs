@@ -14,7 +14,7 @@ def parser_run_model():
     parser.add_argument('mdl_name',type=str)
     parser.add_argument('path_model_save_base',type=str)
     parser.add_argument('fname_data_train_val_test',type=str)
-    parser.add_argument('--path_dataset_base',type=str,default='/home/saad/data/analyses/data_kiersten')
+    parser.add_argument('--path_dataset_base',type=str,default='')
     parser.add_argument('--path_existing_mdl',type=str,default='')
     parser.add_argument('--saveToCSV',type=int,default=1)
     parser.add_argument('--temporal_width',type=int,default=40)
