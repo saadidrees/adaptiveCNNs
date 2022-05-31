@@ -94,7 +94,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         amp_obj = 1   
         
         
-        mean_src = 5
+        mean_src = 0
         timeBin_src = temporal_width #500
         dur_src = np.array([40,60,80])  #np.array([40,60,80]) 
         amp_src = np.array([100,500,1000])#np.array([100,500,1000]) #np.array([10,50,100])
@@ -223,9 +223,9 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
             os.makedirs(path_model_save)
 
 
-        if fname_data_train_val_test == '':
-            fname_savedataset = os.path.join(path_model_save,'stimuli.h5')
-            save_h5Dataset(fname_savedataset,data_train,data_val,parameters=parameters)
+        # if fname_data_train_val_test == '':
+        #     fname_savedataset = os.path.join(path_model_save,'stimuli.h5')
+        #     save_h5Dataset(fname_savedataset,data_train,data_val,parameters=parameters)
         
     
         model_func = getattr(model.models,mdl_name)
@@ -255,8 +255,14 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     # Evaluate performance
     fev_train = mdl_hist_dict['fraction_of_explained_variance'][-1]
     fev_val = mdl_hist_dict['val_fraction_of_explained_variance'][-1]
+    
+    if np.isnan(fev_val) or fev_val==float('-inf') or fev_val==float('inf'):
+        fev_train[-1] = mdl.evaluate(data_train.X,data_train.y,batch_size=5000)
+        fev_val[-1] = mdl.evaluate(data_val.X,data_val.y,batch_size=data_val.X.shape[0])
+    
     print('FEV_train = %0.2f' %fev_train)
     print('FEV_val = %0.2f' %fev_val)
+    
     
     
     try:
