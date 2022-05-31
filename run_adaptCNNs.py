@@ -64,6 +64,9 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         totalTime = trainingSamps_dur
     else:
         totalTime = 10 # mins
+    
+    if fname_data_train_val_test == 0:
+        fname_data_train_val_test = ''
         
     if fname_data_train_val_test != '':
         fname = os.path.join(path_dataset_base,fname_data_train_val_test)
@@ -220,9 +223,9 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
             os.makedirs(path_model_save)
 
 
-        # if fname_data_train_val_test == '':
-        #     fname_savedataset = os.path.join(path_model_save,'stimuli.h5')
-        #     save_h5Dataset(fname_savedataset,data_train,data_val,parameters=parameters)
+        if fname_data_train_val_test == '':
+            fname_savedataset = os.path.join(path_model_save,'stimuli.h5')
+            save_h5Dataset(fname_savedataset,data_train,data_val,parameters=parameters)
         
     
         model_func = getattr(model.models,mdl_name)
