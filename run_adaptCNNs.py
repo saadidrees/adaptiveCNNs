@@ -46,7 +46,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     from collections import namedtuple
     Exptdata = namedtuple('Exptdata', ['X', 'y'])
     
-    from model.data_handler import rolling_window, unroll_data, save_h5Dataset
+    from model.data_handler import rolling_window, unroll_data, save_h5Dataset, load_h5Dataset
     from scipy.ndimage.filters import gaussian_filter
     from scipy.special import gamma as scipy_gamma
     import h5py
@@ -65,112 +65,131 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     else:
         totalTime = 10 # mins
         
+    if fname_data_train_val_test != '':
+        fname = os.path.join(path_dataset_base,fname_data_train_val_test)
+        print('loading data from '+fname)
+
+        data_train,data_val,_ = load_h5Dataset(fname)
         
-    sigma = 1
-    
-    timeBin_obj = 10
-    mean_obj = 5
-    amp_obj = 1   
-    
-    
-    mean_src = 5
-    timeBin_src = temporal_width #500
-    dur_src = np.array([40,60,80])  #np.array([40,60,80]) 
-    amp_src = np.array([100,500,1000]) #np.array([20,30,40,50])
-    frac_perturb = 1
-
-    
-    lum_obj,lum_src = stimuli.obj_source_multi(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
-                                                          timeBin_src = timeBin_src,mean_src=mean_src,amp_src=amp_src,dur_src=dur_src,
-                                                          sigma=sigma,temporal_width=temporal_width,frac_perturb=frac_perturb)
+        lum_src = data_train.X[:,-1,0,0]/data_train.y[:,0]
+        
+        idx_plots = np.arange(200,1200)
+        plt.plot(data_train.y[idx_plots],'red');plt.show()
+        plt.plot(lum_src[idx_plots]);plt.show()
+        plt.plot(data_train.X[idx_plots,-1,0,0],'green');plt.show()
 
 
-
-    stim = lum_obj*lum_src
-    resp = lum_obj
-    
-    # del lum_obj, lum_src
-    
-    idx_plots = np.arange(200,2200)
-    plt.plot(lum_src[idx_plots])
-    plt.plot(lum_obj[idx_plots])
-    plt.show()
-    plt.plot(stim[idx_plots])
-    
-    del lum_obj, lum_src
 
         
-    # % Datasets
-    frac_train = 0.90
-    idx_train = np.floor(frac_train*stim.shape[0]).astype('int')
+    else:
+        print('generating training data')
+   
+        sigma = 1
+        
+        timeBin_obj = 10
+        mean_obj = 5
+        amp_obj = 1   
+        
+        
+        mean_src = 5
+        timeBin_src = temporal_width #500
+        dur_src = np.array([40,60,80])  #np.array([40,60,80]) 
+        amp_src = np.array([100,500,1000])#np.array([100,500,1000]) #np.array([10,50,100])
+        frac_perturb = 1
     
-    stim_train = stim[:idx_train].copy()
-    spike_vec_train = resp[:idx_train].copy() 
+        
+        lum_obj,lum_src = stimuli.obj_source_multi(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
+                                                              timeBin_src = timeBin_src,mean_src=mean_src,amp_src=amp_src,dur_src=dur_src,
+                                                              sigma=sigma,temporal_width=temporal_width,frac_perturb=frac_perturb)
     
-    stim_test = stim[idx_train:].copy()
-    spike_vec_test = resp[idx_train:].copy()
     
-    N_test_limit = 5000
-    if stim_test.shape[0]>N_test_limit:
-        stim_test = stim_test[:N_test_limit]
-        spike_vec_test = spike_vec_test[:N_test_limit]
     
-    dict_train = dict(
-        X=stim_train,
-        y = spike_vec_train,
-        )
+        stim = lum_obj+lum_src
+        resp = lum_obj
+        
+        # norm_fac = stim.mean()
+        # stim = stim/norm_fac
+        # resp = resp/norm_fac
+        
+        # del lum_obj, lum_src
+        
+        idx_plots = np.arange(200,1200)
+        plt.plot(lum_src[idx_plots])
+        plt.plot(lum_obj[idx_plots],'r')
+        plt.show()
+        plt.plot(stim[idx_plots],'g')
+        
+        del lum_obj, lum_src
     
-    del stim_train, spike_vec_train
+            
+        # % Datasets
+        frac_train = 0.90
+        idx_train = np.floor(frac_train*stim.shape[0]).astype('int')
+        
+        stim_train = stim[:idx_train].copy()
+        spike_vec_train = resp[:idx_train].copy() 
+        
+        stim_test = stim[idx_train:].copy()
+        spike_vec_test = resp[idx_train:].copy()
+        
+        N_test_limit = 5000
+        if stim_test.shape[0]>N_test_limit:
+            stim_test = stim_test[:N_test_limit]
+            spike_vec_test = spike_vec_test[:N_test_limit]
+        
+        dict_train = dict(
+            X=stim_train,
+            y = spike_vec_train,
+            )
+        
+        del stim_train, spike_vec_train
+        
+        dict_val = dict(
+            X=stim_test,
+            y = spike_vec_test,
+            )
+        
+        del stim_test, spike_vec_test
+        
+        # % Prepare data
+        # % Arrange the data
+        # X = dict_train['X']
+        # X = np.reshape(X,(int(X.shape[0]/temporal_width),int(temporal_width)),order='C')
+        # X = X[:,:,np.newaxis,np.newaxis]
+        # y = dict_train['y']
+        # y = np.reshape(y,(int(y.shape[0]/temporal_width),int(temporal_width)),order='C')
+        # y = y[:,-1] #    y = y[:,-1]
     
-    dict_val = dict(
-        X=stim_test,
-        y = spike_vec_test,
-        )
+        X = dict_train['X']
+        X = rolling_window(X,temporal_width)
+        X = X[:,:,np.newaxis,np.newaxis]
+        y = dict_train['y']
+        y = rolling_window(y,temporal_width)
+        y = y[:,-1] #    y = y[:,-1]
+        
+        if y.ndim==1:
+            y = y[:,np.newaxis]
+        data_train = Exptdata(X,y)
+        
+        X = dict_val['X']
+        X = rolling_window(X,temporal_width)
+        X = X[:,:,np.newaxis,np.newaxis]
     
-    del stim_test, spike_vec_test
-    
-    # % Prepare data
-    # % Arrange the data
-    # X = dict_train['X']
-    # X = np.reshape(X,(int(X.shape[0]/temporal_width),int(temporal_width)),order='C')
-    # X = X[:,:,np.newaxis,np.newaxis]
-    # y = dict_train['y']
-    # y = np.reshape(y,(int(y.shape[0]/temporal_width),int(temporal_width)),order='C')
-    # y = y[:,-1] #    y = y[:,-1]
+        y = dict_val['y']
+        y = rolling_window(y,temporal_width)
+        y = y[:,-1] #y = y[:,-1]
+        if y.ndim==1:
+            y = y[:,np.newaxis]
+        data_val = Exptdata(X,y)
 
-    X = dict_train['X']
-    X = rolling_window(X,temporal_width)
-    X = X[:,:,np.newaxis,np.newaxis]
-    y = dict_train['y']
-    y = rolling_window(y,temporal_width)
-    y = y[:,-1] #    y = y[:,-1]
-    
-    if y.ndim==1:
-        y = y[:,np.newaxis]
-    data_train = Exptdata(X,y)
-    
-    X = dict_val['X']
-    X = rolling_window(X,temporal_width)
-    X = X[:,:,np.newaxis,np.newaxis]
+        parameters = dict(sigma = sigma,timeBin_obj = timeBin_obj,mean_obj = mean_obj,amp_obj = amp_obj,mean_src = mean_src,timeBin_src = timeBin_src,dur_src = dur_src,amp_src = amp_src,frac_perturb = frac_perturb)
+        del X, y
 
-    y = dict_val['y']
-    y = rolling_window(y,temporal_width)
-    y = y[:,-1] #y = y[:,-1]
-    if y.ndim==1:
-        y = y[:,np.newaxis]
-    data_val = Exptdata(X,y)
-    
-    sigma = sigma,
-    
-    
-
-    parameters = dict(timeBin_obj = timeBin_obj,mean_obj = mean_obj,amp_obj = amp_obj,mean_src = mean_src,timeBin_src = timeBin_src,dur_src = dur_src,amp_src = amp_src,frac_perturb = frac_perturb)
     
     inputs = Input(data_train.X.shape[1:]) # keras input layer
     n_out = data_train.y.shape[1]         # number of units in output layer
 
     
-    del X, y
 
     
     # %% Build and run model
@@ -200,8 +219,10 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         if not os.path.exists(path_model_save):
             os.makedirs(path_model_save)
 
-        fname_savedataset = os.path.join(path_model_save,'stimuli.h5')
-        save_h5Dataset(fname_savedataset,data_train,data_val,parameters)
+
+        if fname_data_train_val_test == '':
+            fname_savedataset = os.path.join(path_model_save,'stimuli.h5')
+            save_h5Dataset(fname_savedataset,data_train,data_val,parameters=parameters)
         
     
         model_func = getattr(model.models,mdl_name)
@@ -265,10 +286,10 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
     
     # y_pred = mdl.predict(data_val.X)
-    # idx_plots = np.arange(0,data_val.X.shape[0])
+    # idx_plots = np.arange(0,1500)#data_val.X.shape[0])
     # plt.plot(data_val.X[idx_plots,-1,0,0])
-    # plt.plot(mean_src*data_val.y[idx_plots],'darkorange')
-    # plt.plot(mean_src*y_pred[idx_plots],'r')
+    # plt.plot(5*data_val.y[idx_plots],'darkorange')
+    # plt.plot(5*y_pred[idx_plots],'r')
     # plt.show()
     # mdl.evaluate(data_val.X,data_val.y,batch_size=bz)
     
