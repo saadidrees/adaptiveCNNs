@@ -197,6 +197,9 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
 
     if nb_epochs>0:
+        if not os.path.exists(path_model_save):
+            os.makedirs(path_model_save)
+
         fname_savedataset = os.path.join(path_model_save,'stimuli.h5')
         save_h5Dataset(fname_savedataset,data_train,data_val,parameters)
         
@@ -208,8 +211,6 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         
         
         fname_excel = 'performance.csv'
-        if not os.path.exists(path_model_save):
-            os.makedirs(path_model_save)
     
         mdl_history = model.train_model.train(mdl, data_train, data_val, fname_excel,path_model_save, fname_model, bz=bz, nb_epochs=nb_epochs,validation_batch_size=validation_batch_size,validation_freq=validation_freq,
                             use_batchLogger=use_batchLogger,USE_CHUNKER=USE_CHUNKER,initial_epoch=initial_epoch,lr=lr,use_lrscheduler=use_lrscheduler,lr_fac=lr_fac)  
