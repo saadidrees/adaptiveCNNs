@@ -257,8 +257,8 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     fev_val = mdl_hist_dict['val_fraction_of_explained_variance'][-1]
     
     if np.isnan(fev_val) or fev_val==float('-inf') or fev_val==float('inf'):
-        fev_train[-1] = mdl.evaluate(data_train.X,data_train.y,batch_size=5000)
-        fev_val[-1] = mdl.evaluate(data_val.X,data_val.y,batch_size=data_val.X.shape[0])
+        fev_train = mdl.evaluate(data_train.X,data_train.y,batch_size=5000)
+        fev_val = mdl.evaluate(data_val.X,data_val.y,batch_size=data_val.X.shape[0])
     
     print('FEV_train = %0.2f' %fev_train)
     print('FEV_val = %0.2f' %fev_val)
@@ -274,6 +274,8 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         t_axis = np.arange(5,nb_epochs_temp+validation_freq,validation_freq)
         idx_negFEV = np.where(np.array(mdl_hist_dict['val_fraction_of_explained_variance'])>0)[0][0]
         plt.plot(t_axis[idx_negFEV:],mdl_hist_dict['val_fraction_of_explained_variance'][idx_negFEV:])
+        plt.ylim([-1,1])
+        plt.show()
         
         best_val = np.max(mdl_hist_dict['val_fraction_of_explained_variance'])
         idx_bestVal = np.argmax(mdl_hist_dict['val_fraction_of_explained_variance'])
@@ -297,8 +299,8 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     # y_pred = mdl.predict(data_val.X)
     # idx_plots = np.arange(0,1500)#data_val.X.shape[0])
     # plt.plot(data_val.X[idx_plots,-1,0,0])
-    # plt.plot(5*data_val.y[idx_plots],'darkorange')
-    # plt.plot(5*y_pred[idx_plots],'r')
+    # plt.plot(data_val.y[idx_plots],'darkorange')
+    # plt.plot(y_pred[idx_plots],'r')
     # plt.show()
     # mdl.evaluate(data_val.X,data_val.y,batch_size=bz)
     
