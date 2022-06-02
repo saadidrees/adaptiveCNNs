@@ -203,12 +203,12 @@ def CNN2D(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=13, ch
                 y = BatchNormalization(axis=-1)(y)
             y = Activation('relu')(y)
             
-        if chan3_n>0:
-            for i in range(N_layers):
-                y = Conv2D(chan3_n, filt3_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(y)
-                if BatchNorm is True:
-                    y = BatchNormalization(axis=-1)(y)
-                y = Activation('relu')(y)
+        # if chan3_n>0:
+        #     for i in range(N_layers):
+        #         y = Conv2D(chan3_n, filt3_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(y)
+        #         if BatchNorm is True:
+        #             y = BatchNormalization(axis=-1)(y)
+        #         y = Activation('relu')(y)
            
            
         y = Flatten()(y)
@@ -231,37 +231,40 @@ def CNN_DENSE(inputs,n_out,**kwargs): #(inputs, n_out, chan1_n=12, filt1_size=13
     BatchNorm = bool(kwargs['BatchNorm'])
     MaxPool = bool(kwargs['MaxPool'])
     N_layers = kwargs['N_layers']
-    
-    if N_layers>2:
-        N_half = int(chan2_n/2)
-        rgb = (np.linspace(0,N_half,int(N_layers/2)+2)/1).astype('int32')
-        rgb = rgb[1:]
-        N_arr_dense = np.concatenate((rgb,np.flip(rgb[:-1])))
-        N_arr_dense = N_arr_dense[:N_layers]
-
+    temporal_width=kwargs['filt_temporal_width']
+    # filt_temporal_width=inputs.shape[1]
+    # filt_temporal_width=temporal_width
 
     sigma = 0.1
-    filt_temporal_width=inputs.shape[1]
+    
 
+    y = inputs
+    
     # first layer  
-    y = Conv2D(chan1_n, filt1_size, data_format="channels_first", kernel_regularizer=l2(1e-3))(inputs)
+    # y = Conv2D(chan1_n,filt1_size,data_format="channels_first", kernel_regularizer=l2(1e-3),kernel_initializer=tf.keras.initializers.ones())(y)
+    y = Reshape((y.shape[1],y.shape[2],y.shape[3],1))(y)
+    y = Conv3D(chan1_n, (temporal_width,filt1_size,filt1_size), padding='valid',data_format="channels_last", kernel_regularizer=l2(1e-3))(y)
+    
+    # y = Reshape((y.shape[1],y.shape[-3]*y.shape[-2],chan1_n))(y)
+    # y = Conv2D(1,filt1_size,data_format="channels_first", kernel_regularizer=l2(1e-3))(y)
+    # y = Reshape((y.shape[1],inputs.shape[-2],inputs.shape[-1],y.shape[-1]))(y)
+    # y = y[:,0,:,:,:]
+    
+    
     if BatchNorm is True:
-        y = BatchNormalization(axis=-1)(y)
+        y = BatchNormalization()(y)
     y = Activation('relu')(y)
     
     if chan1_n==1 and chan2_n<1:
         outputs = y
+
         
     else:
 
         if N_layers>0:
             for i in range(N_layers):
                 y = Flatten()(y)
-                if N_layers>2:
-                    # y = Dense(N_arr_dense[i], kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
-                    y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
-                else:
-                    y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
 
                 if BatchNorm is True: 
                     y = BatchNormalization()(y)
@@ -370,21 +373,44 @@ def slice_tensor(inp_tensor,shift_vals):
     extracted_vals = tf.gather(tens_reshape,shift_vals_new,axis=1)
     extracted_vals_reshaped = tf.reshape(extracted_vals,(-1,1,inp_tensor.shape[2],inp_tensor.shape[3],inp_tensor.shape[4]))
     
+    # print('hello')
     return extracted_vals_reshaped
     
-
+@tf.function(autograph=True,experimental_relax_shapes=True)
+def loop_tensor(inp_tens,shift_vals):
+    out_tens = inp_tens[:,:,:,:,0]
+    out_tens = out_tens[:,:,:,:,None]
+    
+    for i in tf.range(0, shift_vals.shape[-1]):
+        tf.autograph.experimental.set_loop_options(
+                        shape_invariants=[(out_tens, tf.TensorShape([out_tens.shape[0], out_tens.shape[1], out_tens.shape[2], out_tens.shape[3],None]))])
+        rgb = inp_tens[:,:,:,:,i]
+        tmp = tf.roll(rgb, shift=shift_vals[0,i], axis=1)
+        # tmp = tmp[:,0:1,:,:]
+        
+        out_tens = tf.concat([out_tens, tmp[:,:,:,:,None]], axis=-1)  # 
+    out_tens = out_tens[:,:,:,:,1:]
+    print(out_tens.shape)
+    return out_tens
     
     
 # ADD CONSTRAINTS
 class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
-    def __init__(self,units=1,kernel_regularizer=None):
+    def __init__(self,units=1,kernel_regularizer=None,kernel_size=10):
         super(photoreceptor_DA_multichan_randinit,self).__init__()
         self.units = units
         self.kernel_regularizer = regularizers.get(kernel_regularizer)
+        self.kernel_size = kernel_size
             
                
     def build(self,input_shape):    # random inits
     
+        zeta_range = (0.00,0.1)
+        zeta_init = tf.keras.initializers.RandomUniform(minval=zeta_range[0],maxval=zeta_range[1]) #tf.keras.initializers.Constant(0.0159) 
+        self.zeta = self.add_weight(name='zeta',initializer=zeta_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,zeta_range[0],zeta_range[1]))
+        zeta_mulFac = tf.keras.initializers.Constant(100.) 
+        self.zeta_mulFac = self.add_weight(name='zeta_mulFac',initializer=zeta_mulFac,shape=[1,self.units],trainable=False)
+
         alpha_range = (0.001,0.1)
         alpha_init = tf.keras.initializers.RandomUniform(minval=alpha_range[0],maxval=alpha_range[1]) #tf.keras.initializers.Constant(0.0159) 
         self.alpha = self.add_weight(name='alpha',initializer=alpha_init,shape=[1,self.units],trainable=True,regularizer=self.kernel_regularizer,constraint=lambda x: tf.clip_by_value(x,alpha_range[0],alpha_range[1]))
@@ -440,14 +466,14 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
         nC_mulFac = tf.keras.initializers.Constant(10.) 
         self.nC_mulFac = tf.Variable(name='nC_mulFac',initial_value=nC_mulFac(shape=(1,self.units),dtype='float32'),trainable=False)
     
-    def call(self,inputs):
+    def call(self,inputs_func):
        
         timeBin = 1
         
         alpha =  self.alpha*self.alpha_mulFac
         beta = self.beta*self.beta_mulFac
         gamma =  self.gamma*self.gamma_mulFac
-        # zeta = self.zeta*self.zeta_mulFac
+        zeta = self.zeta*self.zeta_mulFac
         tau_y =  (self.tauY_mulFac*self.tauY) / timeBin
         tau_z =  (self.tauZ_mulFac*self.tauZ) / timeBin
         tau_c =  (self.tauC_mulFac*self.tauC) / timeBin
@@ -455,31 +481,36 @@ class photoreceptor_DA_multichan_randinit(tf.keras.layers.Layer):
         n_z =  (self.nZ_mulFac*self.nZ)
         n_c =  (self.nC_mulFac*self.nC)
         
-        t = tf.range(0,inputs.shape[1],dtype='float32')
+        # t = tf.range(0,inputs_func.shape[1],dtype='float32')
+        t = tf.range(0,self.kernel_size,dtype='float32')
         
         Ky = generate_simple_filter_multichan(tau_y,n_y,t)   
         Kc = generate_simple_filter_multichan(tau_c,n_c,t)  
         Kz = generate_simple_filter_multichan(tau_z,n_z,t)  
         Kz = (gamma*Kc) + ((1-gamma) * Kz)
         
-        y_tf = conv_oper_multichan(inputs,Ky)
-        z_tf = conv_oper_multichan(inputs,Kz)
+        y_tf = conv_oper_multichan(inputs_func,Ky)
+        z_tf = conv_oper_multichan(inputs_func,Kz)
         
                
-        y_tf_reshape = tf.reshape(y_tf,(-1,y_tf.shape[1],y_tf.shape[2],inputs.shape[-1],tau_z.shape[-1]))
-        z_tf_reshape = tf.reshape(z_tf,(-1,z_tf.shape[1],z_tf.shape[2],inputs.shape[-1],tau_z.shape[-1]))
+        y_tf_reshape = tf.reshape(y_tf,(-1,y_tf.shape[1],y_tf.shape[2],inputs_func.shape[-1],tau_z.shape[-1]))
+        z_tf_reshape = tf.reshape(z_tf,(-1,z_tf.shape[1],z_tf.shape[2],inputs_func.shape[-1],tau_z.shape[-1]))
         # print(z_tf_reshape.shape)
         
         y_shift = tf.math.argmax(Ky,axis=1);y_shift = tf.cast(y_shift,tf.int32)
         z_shift = tf.math.argmax(Kz,axis=1);z_shift = tf.cast(z_shift,tf.int32)
+               
+        # y_tf_reshape = slice_tensor(y_tf_reshape,y_shift)
+        # z_tf_reshape = slice_tensor(z_tf_reshape,z_shift)
         
-        y_tf_reshape = slice_tensor(y_tf_reshape,y_shift)
-        z_tf_reshape = slice_tensor(z_tf_reshape,z_shift)
+        # y_tf_reshape = loop_tensor(y_tf_reshape,y_shift)
+        # z_tf_reshape = loop_tensor(z_tf_reshape,z_shift)
+
         # print(z_tf_reshape)
                
     
         # outputs = zeta[None,None,:,None,:] + (alpha[None,None,:,None,:]*y_tf_reshape)/(1+(beta[None,None,:,None,:]*z_tf_reshape))
-        outputs = (alpha[None,None,0,None,:]*y_tf_reshape[:,:,0,:,:])/(1e-3+(beta[None,None,0,None,:]*z_tf_reshape[:,:,0,:,:]))
+        outputs = zeta[None,None,0,None,:] + (alpha[None,None,0,None,:]*y_tf_reshape[:,:,0,:,:])/(1e-6+(beta[None,None,0,None,:]*z_tf_reshape[:,:,0,:,:]))
         # outputs = outputs[:,:,0,:,:]
         
         # print(outputs.shape)
@@ -498,23 +529,18 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
     N_layers = kwargs['N_layers']
     dropout_rate = kwargs['dropout']
     
-    if N_layers>2:
-        N_half = int(chan2_n/2)
-        rgb = (np.linspace(0,N_half,int(N_layers/2)+2)/1).astype('int32')
-        rgb = rgb[1:]
-        N_arr_dense = np.concatenate((rgb,np.flip(rgb[:-1])))
-        N_arr_dense = N_arr_dense[:N_layers]
-
-
-
     
     y = inputs
     y = Reshape((inputs.shape[1],inputs.shape[-2]*inputs.shape[-1]))(y)
-    y = photoreceptor_DA_multichan_randinit(units=chan1_n,kernel_regularizer=l2(1e-4))(y)
-    # y = Reshape((inputs.shape[-3],inputs.shape[-2],inputs.shape[-1],chan1_n))(y)
-    y = Reshape((1,inputs.shape[-2],inputs.shape[-1],chan1_n))(y)
-    y = Permute((4,2,3,1))(y)   # Channels first
-    y = y[:,:,:,:,0]       # only take the first time point
+    y = photoreceptor_DA_multichan_randinit(kernel_size=filt_temporal_width,units=chan1_n,kernel_regularizer=l2(1e-4))(y)
+    y = Reshape((inputs.shape[1],inputs.shape[-2],inputs.shape[-1],chan1_n))(y)
+    y = y[:,199:,:,:,:]
+    
+    # y = Reshape((y.shape[1],y.shape[-3]*y.shape[-2],chan1_n))(y)
+    # y = Conv2D(1,filt1_size,data_format="channels_first", kernel_regularizer=l2(1e-3),kernel_initializer=tf.keras.initializers.ones())(y)
+    # y = Reshape((y.shape[1],inputs.shape[-2],inputs.shape[-1],y.shape[-1]))(y)
+    # y = y[:,0,:,:,:]
+    
     
     # if BatchNorm==True:
     #     rgb = y.shape[1:]
@@ -522,22 +548,19 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
 
 
     if chan1_n==1 and chan2_n<1:
-        y = Flatten()(y)
-        y = Activation('softplus')(y)
-        outputs = y
+        pass
+        # y = Flatten()(y)
+        # y = Activation('softplus')(y)
+        # outputs = y
         
     else:
-        y = Activation('relu')(y)
+        # y = Activation('relu')(y)
         
         if N_layers>0 and chan2_n>0:
             y = Flatten()(y)
             
             for i in range(N_layers):
-                if N_layers>2:
-                    # y = Dense(N_arr_dense[i], kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
-                    y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
-                else:
-                    y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
+                y = Dense(chan2_n, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-4))(y)
 
                 if dropout_rate>0:
                     y = Dropout(dropout_rate)(y)
@@ -548,13 +571,14 @@ def A_CNN_DENSE(inputs,n_out,**kwargs): # BP --> 3D CNN --> 2D CNN
                 y = Activation('relu')(y)
 
         
-        # Dense layer
-        y = Flatten()(y)
-    
-        if BatchNorm is True: 
-            y = BatchNormalization(axis=-1)(y)
-        y = Dense(n_out, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-3))(y)
-        outputs = Activation('softplus')(y)    
+    # Dense layer
+    y = Flatten()(y)
+
+    if BatchNorm is True: 
+        y = BatchNormalization(axis=-1)(y)
+    y = Dense(n_out, kernel_regularizer=l2(1e-3), activity_regularizer=l1(1e-3))(y)
+    outputs = Activation('softplus')(y)    
 
     mdl_name = 'A_CNN_DENSE'
     return Model(inputs, outputs, name=mdl_name)
+

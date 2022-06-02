@@ -27,16 +27,16 @@ __all__ = ['cc', 'rmse', 'fev', 'CC', 'RMSE', 'FEV', 'np_wrap',
 def correlation_coefficient(obs_rate, est_rate):    # (y_true, y_pred)
     """Pearson correlation coefficient"""
     
-    x_mu = obs_rate - tf.experimental.numpy.nanmean(obs_rate, axis=0, keepdims=True)
-    x_std = K.std(obs_rate, axis=0, keepdims=True)
-    y_mu = est_rate - tf.experimental.numpy.nanmean(est_rate, axis=0, keepdims=True)
-    y_std = K.std(est_rate, axis=0, keepdims=True)
-    return tf.experimental.numpy.nanmean(x_mu * y_mu, axis=0, keepdims=True) / (x_std * y_std)
+    x_mu = obs_rate - tf.experimental.numpy.nanmean(obs_rate, axis=-1, keepdims=True)
+    x_std = K.std(obs_rate, axis=-1, keepdims=True)
+    y_mu = est_rate - tf.experimental.numpy.nanmean(est_rate, axis=-1, keepdims=True)
+    y_std = K.std(est_rate, axis=-1, keepdims=True)
+    return tf.experimental.numpy.nanmean(x_mu * y_mu, axis=-1, keepdims=True) / (x_std * y_std)
 
 
 def mean_squared_error(obs_rate, est_rate):
     """Mean squared error across samples"""
-    return K.mean(K.square(est_rate - obs_rate), axis=0, keepdims=True)
+    return K.mean(K.square(est_rate - obs_rate), axis=-1, keepdims=True)
 
 # def mean_squared_error(obs_rate, est_rate):
 #     """Mean squared error across samples"""
@@ -53,7 +53,7 @@ def fraction_of_explained_variance(obs_rate, est_rate):
 
     https://wikipedia.org/en/Fraction_of_variance_unexplained
     """
-    return 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=0, keepdims=True)
+    return 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=-1, keepdims=True)
 
 # def fraction_of_explained_variance(obs_rate, est_rate):
 #     """Fraction of explained variance
@@ -64,8 +64,10 @@ def fraction_of_explained_variance(obs_rate, est_rate):
 
 def fraction_of_explainable_variance_explained(obs_rate, est_rate,obs_noise):
     resid = obs_rate - est_rate
-    mse_resid = np.mean(resid**2,axis=0)
-    var_test = np.var(est_rate,axis=0)
+    # mse_resid = np.mean(resid**2,axis=0)
+    mse_resid = np.mean(resid**2,axis=-1)
+    # var_test = np.var(est_rate,axis=0)
+    var_test = np.var(est_rate,axis=-1)
     fev_allUnits = 1 - ((mse_resid - obs_noise)/(var_test-obs_noise))
     fev_median = np.median(fev_allUnits)
     fev_std = np.std(fev_allUnits)
@@ -74,8 +76,8 @@ def fraction_of_explainable_variance_explained(obs_rate, est_rate,obs_noise):
 
 def fraction_of_explainable_variance_explained_K(obs_rate, est_rate,obs_noise=0):
     resid = obs_rate - est_rate
-    mse_resid = tf.experimental.numpy.nanmean(resid**2,axis=0)
-    var_test = K.var(obs_rate,axis=0)
+    mse_resid = tf.experimental.numpy.nanmean(resid**2,axis=-1)
+    var_test = K.var(obs_rate,axis=-1)
     fev_allUnits = 1 - ((mse_resid - obs_noise)/(var_test-obs_noise))
     # fev_median = K.median(fev_allUnits)
     # fev_std = np.std(fev_allUnits)
@@ -85,11 +87,11 @@ def fraction_of_explainable_variance_explained_K(obs_rate, est_rate,obs_noise=0)
 
 
 def correlation_coefficient_distribution(obs_rate,est_rate):
-    x_mu = obs_rate - np.mean(obs_rate, axis=0)
-    x_std = np.std(obs_rate, axis=0)
-    y_mu = est_rate - np.mean(est_rate, axis=0)
-    y_std = np.std(est_rate, axis=0)
-    cc_allUnits = np.mean(x_mu * y_mu,axis=0) / (x_std * y_std)
+    x_mu = obs_rate - np.mean(obs_rate, axis=-1)
+    x_std = np.std(obs_rate, axis=-1)
+    y_mu = est_rate - np.mean(est_rate, axis=-1)
+    y_std = np.std(est_rate, axis=-1)
+    cc_allUnits = np.mean(x_mu * y_mu,axis=-1) / (x_std * y_std)
     return cc_allUnits
 
 

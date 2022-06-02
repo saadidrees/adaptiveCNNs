@@ -36,14 +36,12 @@ def chunker(data,batch_size,mode='default'):
         
 def lr_scheduler(epoch,lr):
     # [epoch,lr divide factor]
-    arr_scheduler = np.array([[3,10],
+    arr_scheduler = np.array([[3,1],
                               [15,10],
                               [50,10],
-                              [80,2],
-                              [100,2],
-                              [120,2],
-                              [140,2],
-                              [160,2]])
+                              [100,1],
+                              [150,10],
+                              [180,10]])
     
     
     idx = np.where(arr_scheduler[:,0]==epoch)[0]

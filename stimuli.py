@@ -60,7 +60,7 @@ def obj_source_multi(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_src 
     assert np.sum(abs(lum_obj-lum_obj_rever))==0
     
     range_shift = np.arange((2*timeBin_obj),timeBin_src-dur_src.max()-(2*timeBin_obj),timeBin_obj,dtype='int32')
-
+ 
     total_conds = dur_src.size * amp_src.size
     step_block = np.zeros((timeBin_src,total_conds))
     dur_amp_shift_id = np.zeros((total_conds,2))
@@ -95,12 +95,18 @@ def obj_source_multi(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_src 
 
 def obj_source_multi_old(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_src = 50,mean_src=10,amp_src=5,dur_src=50,sigma=1,temporal_width=0,frac_perturb=1):
     
-    nsamps_obj =  int(totalTime*1000) + temporal_width
-    lum_obj_temp = np.random.normal(mean_obj,amp_obj,nsamps_obj)
-    lum_obj_temp = np.repeat(lum_obj_temp,timeBin_obj)
-    lum_obj_temp = gaussian_filter(lum_obj_temp,sigma=sigma)
+    nsamps_obj =  int(totalTime*1000*temporal_width/timeBin_obj)
+    lum_obj = np.random.normal(mean_obj,amp_obj,nsamps_obj)
+    lum_obj = np.repeat(lum_obj,timeBin_obj)
+    lum_obj = gaussian_filter(lum_obj,sigma=sigma)
     
-    lum_obj = rolling_window(lum_obj_temp,temporal_width)
+    
+    lum_obj_temp = np.reshape(lum_obj,(int(lum_obj.shape[0]/temporal_width),int(temporal_width)),order='C')
+    lum_obj_rever = np.reshape(lum_obj_temp,lum_obj.shape[0],order='C')
+    assert np.sum(abs(lum_obj-lum_obj_rever))==0
+    
+    lum_obj = lum_obj_temp
+
     
     range_shift = np.arange((2*timeBin_obj),timeBin_src-dur_src.max()-(2*timeBin_obj),timeBin_obj,dtype='int32')
 
@@ -114,11 +120,14 @@ def obj_source_multi_old(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_
                 cntr+=1
                 dur_amp_shift_id[cntr,0] = dur_src[i]
                 dur_amp_shift_id[cntr,1] = amp_src[j]
-                dur_amp_shift_id[cntr,2] = k
                 rgb = mean_src*np.ones((timeBin_src))
                 rgb[:dur_src[i]] = amp_src[j]
-                rgb = np.roll(rgb,k)
+                shift = int((temporal_width - dur_src[i])/2)
+                rgb = np.roll(rgb,shift+100)
+                # rgb = np.roll(rgb,k)
                 step_block[:,cntr] = rgb
+                dur_amp_shift_id[cntr,2] = shift
+
             
     n_reps = int(np.ceil(lum_obj.shape[0]/total_conds)) #int(np.ceil(N_perturb/step_block.shape[-1]))
     lum_src = np.tile(step_block,[1,n_reps])
