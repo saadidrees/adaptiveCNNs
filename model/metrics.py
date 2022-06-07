@@ -15,33 +15,45 @@ __all__ = ['cc', 'rmse', 'fev', 'CC', 'RMSE', 'FEV', 'np_wrap',
            'fraction_of_explained_variance','correlation_coefficient_distribution','fraction_of_explainable_variance_explained','fraction_of_explainable_variance_explained_K']
 
 
-# def correlation_coefficient(obs_rate, est_rate):    # (y_true, y_pred)
-#     """Pearson correlation coefficient"""
-#     x_mu = obs_rate - K.mean(obs_rate, axis=0, keepdims=True)
-#     x_std = K.std(obs_rate, axis=0, keepdims=True)
-#     y_mu = est_rate - K.mean(est_rate, axis=0, keepdims=True)
-#     y_std = K.std(est_rate, axis=0, keepdims=True)
-#     return K.mean(x_mu * y_mu, axis=0, keepdims=True) / (x_std * y_std)
-
-
 def correlation_coefficient(obs_rate, est_rate):    # (y_true, y_pred)
     """Pearson correlation coefficient"""
+    if obs_rate.shape[-1]>1:
+        x_mu = obs_rate - tf.experimental.numpy.nanmean(obs_rate, axis=-1, keepdims=True)
+        x_std = K.std(obs_rate, axis=-1, keepdims=True)
+        y_mu = est_rate - tf.experimental.numpy.nanmean(est_rate, axis=-1, keepdims=True)
+        y_std = K.std(est_rate, axis=-1, keepdims=True)
+        cc = tf.experimental.numpy.nanmean(x_mu * y_mu, axis=-1, keepdims=True) / (x_std * y_std)
+        
+    else:
+        x_mu = obs_rate - K.mean(obs_rate, axis=0, keepdims=True)
+        x_std = K.std(obs_rate, axis=0, keepdims=True)
+        y_mu = est_rate - K.mean(est_rate, axis=0, keepdims=True)
+        y_std = K.std(est_rate, axis=0, keepdims=True)
+        cc = K.mean(x_mu * y_mu, axis=0, keepdims=True) / (x_std * y_std)
+        
+    return cc
+
+
+
+# def correlation_coefficient(obs_rate, est_rate):    # (y_true, y_pred)
+#     """Pearson correlation coefficient"""
     
-    x_mu = obs_rate - tf.experimental.numpy.nanmean(obs_rate, axis=-1, keepdims=True)
-    x_std = K.std(obs_rate, axis=-1, keepdims=True)
-    y_mu = est_rate - tf.experimental.numpy.nanmean(est_rate, axis=-1, keepdims=True)
-    y_std = K.std(est_rate, axis=-1, keepdims=True)
-    return tf.experimental.numpy.nanmean(x_mu * y_mu, axis=-1, keepdims=True) / (x_std * y_std)
+#     x_mu = obs_rate - tf.experimental.numpy.nanmean(obs_rate, axis=-1, keepdims=True)
+#     x_std = K.std(obs_rate, axis=-1, keepdims=True)
+#     y_mu = est_rate - tf.experimental.numpy.nanmean(est_rate, axis=-1, keepdims=True)
+#     y_std = K.std(est_rate, axis=-1, keepdims=True)
+#     return tf.experimental.numpy.nanmean(x_mu * y_mu, axis=-1, keepdims=True) / (x_std * y_std)
+
 
 
 def mean_squared_error(obs_rate, est_rate):
     """Mean squared error across samples"""
-    return K.mean(K.square(est_rate - obs_rate), axis=-1, keepdims=True)
-
-# def mean_squared_error(obs_rate, est_rate):
-#     """Mean squared error across samples"""
-#     return tf.experimental.numpy.nanmean(K.square(est_rate - obs_rate), axis=0, keepdims=True)
-
+    if obs_rate.shape[-1]>1:
+        mse_val = tf.experimental.numpy.nanmean(K.square(est_rate - obs_rate), axis=0, keepdims=True)
+    else:
+        mse_val = tf.experimental.numpy.nanmean(K.square(est_rate - obs_rate), axis=-1, keepdims=True)
+    
+    return mse_val
 
 def root_mean_squared_error(obs_rate, est_rate):
     """Root mean squared error"""
@@ -53,7 +65,13 @@ def fraction_of_explained_variance(obs_rate, est_rate):
 
     https://wikipedia.org/en/Fraction_of_variance_unexplained
     """
-    return 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=-1, keepdims=True)
+    
+    if obs_rate.shape[-1]>1:
+        fev = 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=-1, keepdims=True)
+    else:
+        fev = 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=0, keepdims=True)
+        
+    return fev
 
 # def fraction_of_explained_variance(obs_rate, est_rate):
 #     """Fraction of explained variance
@@ -64,10 +82,10 @@ def fraction_of_explained_variance(obs_rate, est_rate):
 
 def fraction_of_explainable_variance_explained(obs_rate, est_rate,obs_noise):
     resid = obs_rate - est_rate
-    # mse_resid = np.mean(resid**2,axis=0)
-    mse_resid = np.mean(resid**2,axis=-1)
-    # var_test = np.var(est_rate,axis=0)
-    var_test = np.var(est_rate,axis=-1)
+    mse_resid = np.mean(resid**2,axis=0)
+    # mse_resid = np.mean(resid**2,axis=-1)
+    var_test = np.var(est_rate,axis=0)
+    # var_test = np.var(est_rate,axis=-1)
     fev_allUnits = 1 - ((mse_resid - obs_noise)/(var_test-obs_noise))
     fev_median = np.median(fev_allUnits)
     fev_std = np.std(fev_allUnits)

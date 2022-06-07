@@ -123,7 +123,8 @@ def obj_source_multi_old(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_
                 rgb = mean_src*np.ones((timeBin_src))
                 rgb[:dur_src[i]] = amp_src[j]
                 shift = int((temporal_width - dur_src[i])/2)
-                rgb = np.roll(rgb,shift+100)
+                shift = int(temporal_width - dur_src[i])
+                rgb = np.roll(rgb,shift)
                 # rgb = np.roll(rgb,k)
                 step_block[:,cntr] = rgb
                 dur_amp_shift_id[cntr,2] = shift

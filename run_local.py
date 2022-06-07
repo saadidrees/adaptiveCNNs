@@ -1,4 +1,4 @@
-#taq!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Fri Apr 29 14:58:27 2022
@@ -15,31 +15,34 @@ from run_adaptCNNs import run_model
 
 
 expDate = 'obj_source'
-mdl_name = 'A_CNN_DENSE'#' #'PR_CNN2D_fixed' #'PR_CNN2D'#'CNN_2D' BP_CNN2D_MULTIBP_PRFRTRAINABLEGAMMA
+subfold = 'orig_idea'
+mdl_name = 'A_CNN_DENSE' #'A_CNN_NORM' #'A_CNN_DENSE' #'CNN_DENSE' 'ACNN_NORM_2DCNN' 'ACNN_NORM_3DCNN' 'ACNN_NORM_2DCNN'
+fname_data_train_val_test = ''
+
 info = ''
 idxStart_fixedLayers=0
 idxEnd_fixedLayers=-1
 CONTINUE_TRAINING=0
 
-lr = 0.01
+lr = 0.01           # for CNN_DENSE with few hidden layers, use small LR like 0.001
 lr_fac = 1  # how much to divide the learning rate when training is resumed
 use_lrscheduler=1
 USE_CHUNKER=0
 pr_temporal_width = 0
 temporal_width=200
 thresh_rr=0
-chan1_n=10
+chan1_n=10 #200  
 filt1_size=1
 filt1_3rdDim=0
 N_layers = 1
-chan2_n=5
-filt2_size=0
+chan2_n=10#100
+filt2_size=1
 filt2_3rdDim=0
 chan3_n=0
 filt3_size=0
 filt3_3rdDim=0
-nb_epochs=200         # setting this to 0 only runs evaluation
-bz_ms=512
+nb_epochs=100         # setting this to 0 only runs evaluation
+bz_ms=1024
 BatchNorm=1
 MaxPool=0
 runOnCluster=0
@@ -47,15 +50,14 @@ num_trials=1
 
 BatchNorm_train = 0
 saveToCSV=1
-trainingSamps_dur=20 # minutes
+trainingSamps_dur=10 # minutes
 validationSamps_dur=0
 use_batchLogger = 0
 
 
-name_datasetFile = ''
-path_model_save_base = os.path.join('/home/saad/data/analyses/adaptiveCNNs',expDate)
-path_dataset_base = ''
-fname_data_train_val_test = ''
+path_model_save_base = os.path.join('/home/saad/data/analyses/adaptiveCNNs',expDate,subfold)
+path_dataset_base = '/home/saad/data/analyses/adaptiveCNNs/obj_source/datasets/'
+
 
 c_trial = 1
 

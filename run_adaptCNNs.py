@@ -1,4 +1,4 @@
-#filt1_sizey_predlum_objdata_val.ypred_lay!/usr/bin/env python3
+#filt1_sizey_predlum_objdata_val.ypred_laya.sh!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Fri Apr 29 14:52:15 2022
@@ -56,7 +56,8 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     def generate_simple_filter(tau,n,t):
         t_rep = np.repeat(t[:,None],n.shape[0],axis=-1)
         f = (t_rep**n[None,:])*np.exp(-t_rep/tau[None,:]); # functional form in paper
-        f = (f/tau**(n+1))/scipy_gamma(n+1) # normalize appropriately
+        # f = (f/tau**(n+1))/scipy_gamma(n+1) # normalize appropriately
+        f = f/np.sum(f,axis=0)
         return f
     
     # % Build basic signal and response
@@ -95,19 +96,19 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         
         
         mean_src = 5
-        timeBin_src = 500
+        timeBin_src = temporal_width
         dur_src = np.array([60]) 
         amp_src = np.array([1000]) #np.array([10,50,100])
         frac_perturb = 1
     
         
-        # lum_obj,lum_src = stimuli.obj_source_multi(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
-        #                                                       timeBin_src = timeBin_src,mean_src=mean_src,amp_src=amp_src,dur_src=dur_src,
-        #                                                       sigma=sigma,temporal_width=temporal_width,frac_perturb=frac_perturb)
-    
-        lum_obj,lum_src,_ = stimuli.obj_source_multi_old(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
+        lum_obj,lum_src = stimuli.obj_source_multi(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
                                                               timeBin_src = timeBin_src,mean_src=mean_src,amp_src=amp_src,dur_src=dur_src,
-                                                              sigma=sigma,temporal_width=timeBin_src,frac_perturb=frac_perturb)
+                                                              sigma=sigma,temporal_width=temporal_width,frac_perturb=frac_perturb)
+    
+        # lum_obj,lum_src,_ = stimuli.obj_source_multi_old(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
+        #                                                       timeBin_src = timeBin_src,mean_src=mean_src,amp_src=amp_src,dur_src=dur_src,
+        #                                                       sigma=sigma,temporal_width=timeBin_src,frac_perturb=frac_perturb)
         
         
 
@@ -122,18 +123,18 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         # del lum_obj, lum_src
         
         # For not rolled
-        idx_plots = np.arange(200,210)
-        plt.plot(lum_src[idx_plots,:].T)
-        plt.plot(lum_obj[idx_plots,:].T,'r')
-        plt.show()
-        plt.plot(stim[idx_plots,:].T,'g')
+        # idx_plots = np.arange(200,205)
+        # plt.plot(lum_src[idx_plots,:].T)
+        # plt.plot(lum_obj[idx_plots,:].T,'r')
+        # plt.show()
+        # plt.plot(stim[idx_plots,:].T)
         
         # For rolled
-        # idx_plots = np.arange(200,1200)
-        # plt.plot(lum_src[idx_plots])
-        # plt.plot(lum_obj[idx_plots],'r')
-        # plt.show()
-        # plt.plot(stim[idx_plots],'g')
+        idx_plots = np.arange(200,1200)
+        plt.plot(lum_src[idx_plots])
+        plt.plot(lum_obj[idx_plots],'r')
+        plt.show()
+        plt.plot(stim[idx_plots],'g')
 
         
         # del lum_obj, lum_src
@@ -170,42 +171,42 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         
         # % Prepare data
         # % Arrange the data
-        X = dict_train['X']
-        X = X[:,:,np.newaxis,np.newaxis]
-        y = dict_train['y']
-        y = y[:,temporal_width-1:]
-        # y = y[:,-temporal_width+1]
-        data_train = Exptdata(X,y)
-        
-        X = dict_val['X']
-        X = X[:,:,np.newaxis,np.newaxis]
-        y = dict_val['y']
-        y = y[:,temporal_width-1:]
-        # y = y[:,:-temporal_width+1]
-        data_val = Exptdata(X,y)
-
-    
         # X = dict_train['X']
-        # X = rolling_window(X,temporal_width)
         # X = X[:,:,np.newaxis,np.newaxis]
         # y = dict_train['y']
-        # y = rolling_window(y,temporal_width)
-        # y = y[:,-1] #    y = y[:,-1]
-        
-        # if y.ndim==1:
-        #     y = y[:,np.newaxis]
+        # y = y[:,temporal_width-1:]
+        # # y = y[:,-temporal_width+1]
         # data_train = Exptdata(X,y)
         
         # X = dict_val['X']
-        # X = rolling_window(X,temporal_width)
         # X = X[:,:,np.newaxis,np.newaxis]
-    
         # y = dict_val['y']
-        # y = rolling_window(y,temporal_width)
-        # y = y[:,-1] #y = y[:,-1]
-        # if y.ndim==1:
-        #     y = y[:,np.newaxis]
+        # y = y[:,temporal_width-1:]
+        # # y = y[:,:-temporal_width+1]
         # data_val = Exptdata(X,y)
+
+    
+        X = dict_train['X']
+        X = rolling_window(X,temporal_width)
+        X = X[:,:,np.newaxis,np.newaxis]
+        y = dict_train['y']
+        y = rolling_window(y,temporal_width)
+        y = y[:,-1] #    y = y[:,-1]
+        
+        if y.ndim==1:
+            y = y[:,np.newaxis]
+        data_train = Exptdata(X,y)
+        
+        X = dict_val['X']
+        X = rolling_window(X,temporal_width)
+        X = X[:,:,np.newaxis,np.newaxis]
+    
+        y = dict_val['y']
+        y = rolling_window(y,temporal_width)
+        y = y[:,-1] #y = y[:,-1]
+        if y.ndim==1:
+            y = y[:,np.newaxis]
+        data_val = Exptdata(X,y)
 
         parameters = dict(sigma = sigma,timeBin_obj = timeBin_obj,mean_obj = mean_obj,amp_obj = amp_obj,mean_src = mean_src,timeBin_src = timeBin_src,dur_src = dur_src,amp_src = amp_src,frac_perturb = frac_perturb)
         del X, y
@@ -286,7 +287,14 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     print('FEV_val = %0.2f' %fev_val)
     
     
-    
+    best_val = np.max(mdl_hist_dict['val_fraction_of_explained_variance'])
+    idx_bestVal = np.argmax(mdl_hist_dict['val_fraction_of_explained_variance'])
+    idx_bestVal = (idx_bestVal*validation_freq)+validation_freq
+    best_val_train = mdl_hist_dict['fraction_of_explained_variance'][idx_bestVal-1]
+
+    print('FEV_train = %0.2f' %best_val_train)
+    print('FEV_val = %0.2f' %best_val)
+
     try:
         nb_epochs_temp = len(mdl_hist_dict['fraction_of_explained_variance'])
         t_axis = np.arange(1,nb_epochs_temp+1,1)
@@ -299,30 +307,41 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         plt.ylim([-1,1])
         plt.show()
         
-        best_val = np.max(mdl_hist_dict['val_fraction_of_explained_variance'])
-        idx_bestVal = np.argmax(mdl_hist_dict['val_fraction_of_explained_variance'])
-        idx_bestVal = (idx_bestVal*validation_freq)+validation_freq
-        best_val_train = mdl_hist_dict['fraction_of_explained_variance'][idx_bestVal-1]
-        
-        print('FEV_train = %0.2f' %best_val_train)
-        print('FEV_val = %0.2f' %best_val)
-        
-        # fev_train = best_val_train
-        # fev_val = 
     except:
         best_val = 0
         best_val_train = 0
 
     
-    # fname_bestweights = 'weights_'+fname_model+'_epoch-%03d'%idx_bestVal
-    # mdl.load_weights(os.path.join(path_model_save,fname_bestweights))
+    fname_bestweights = 'weights_'+fname_model+'_epoch-%03d'%idx_bestVal
+    mdl.load_weights(os.path.join(path_model_save,fname_bestweights))
     
+    y_pred = mdl.predict(data_val.X)
+    y_act = data_val.y
+    X_unr = data_val.X[:,-1,0,0]
     
+    idx_plots = np.arange(1000,2000)
+    plt.plot(X_unr[idx_plots])
+    plt.plot(mean_src*y_act[idx_plots],'darkorange')
+    plt.plot(mean_src*y_pred[idx_plots],'r')
+    plt.ylim([0,50])
+    plt.show()
+    
+    thresh = 100
+    idx_src = X_unr>thresh
+    
+    fev_all = metrics.fraction_of_explainable_variance_explained(y_act,y_pred,obs_noise=0)[0]
+    fev_local = metrics.fraction_of_explainable_variance_explained(y_act[~idx_src],y_pred[~idx_src],obs_noise=0)[0]
+    fev_global = metrics.fraction_of_explainable_variance_explained(y_act[idx_src],y_pred[idx_src],obs_noise=0)[0]
+    
+    print('fev_all = %0.2f' %fev_all)
+    print('fev_local = %0.2f' %fev_local)
+    print('fev_global = %0.2f' %fev_global)
+
     # y_pred = mdl.predict(data_val.X)
     # idx_plots = np.arange(200,201)#data_val.X.shape[0])
-    # # plt.plot(data_val.X[idx_plots,temporal_width-1:,0,0].T)
-    # plt.plot(data_val.y[idx_plots,:].T,'darkorange')
-    # plt.plot(np.squeeze(y_pred[idx_plots,:].T),'r')
+    # plt.plot(data_val.X[idx_plots,temporal_width-1:,0,0].T)
+    # plt.plot(mean_src*data_val.y[idx_plots,:].T,'darkorange')
+    # plt.plot(mean_src*np.squeeze(y_pred[idx_plots,:].T),'r')
     # plt.ylim([0,50])
     # plt.show()
     # mdl.evaluate(data_val.X,data_val.y,batch_size=bz)
@@ -341,11 +360,12 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
 # %% rebuild a-conv output
     # weights_dict = model.analysis.get_weightsDict(mdl)
     # # params_norm = model.analysis.get_weightsOfLayer(weights_dict,'batch_normalization')
-    # params = model.analysis.get_weightsOfLayer(weights_dict,'photoreceptor_da_multichan_randinit_4')
+    # params = model.analysis.get_weightsOfLayer(weights_dict,'photoreceptor_da_multichan_randinit_10')
     
     # # for i in params_updated.keys():
     # #     params[i] = params_updated[i]
     
+    # zeta = np.atleast_1d(params['zeta']*params['zeta_mulFac'])
     # alpha = np.atleast_1d(params['alpha']*params['alpha_mulFac'])
     # beta = np.atleast_1d(params['beta']*params['beta_mulFac'])
     # gamma = np.atleast_1d(params['gamma']*params['gamma_mulFac'])  #np.atleast_1d(0.75) #
@@ -364,7 +384,9 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     # Kz = generate_simple_filter(tauZ,nZ,t)
     # Kz = (gamma*Kc) + (1-gamma)*Kz
 
-    
+    # # Ky = np.flip(Ky)  
+    # # Kz = np.flip(Kz)
+
     # plt.plot(Ky);plt.show()
     # plt.plot(Kz);plt.show()
 
@@ -372,74 +394,81 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     # y = np.zeros((data_toTake.X.shape[0],data_toTake.X.shape[1]+Ky.shape[0]-1,Ky.shape[1]))
     # z = np.zeros((data_toTake.X.shape[0],data_toTake.X.shape[1]+Kz.shape[0]-1,Kz.shape[1]))
     
-    # # rgb = np.apply_along_axis(lambda m: np.convolve(m, Ky[:,0], mode='full'),axis=1,arr=data_toTake.X[:,:,0,0])
-    # # # rgb2 = rgb(data_toTake.X[:,:,0,0])
 
     # for i in range(Ky.shape[1]):
     #     y[:,:,i] = np.apply_along_axis(lambda m: np.convolve(m, Ky[:,0], mode='full'),axis=1,arr=data_toTake.X[:,:,0,0]) #np.convolve(stim,Ky[:,i],'full')
     #     z[:,:,i] = np.apply_along_axis(lambda m: np.convolve(m, Kz[:,0], mode='full'),axis=1,arr=data_toTake.X[:,:,0,0])
-    # # y = np.convolve(stim,Ky,'full')
-    # # z = np.convolve(stim,Kz,'full')
        
-    # y = y[:,:data_toTake.X.shape[1]]
-    # z = z[:,:data_toTake.X.shape[1]]
+    # y = y[:,:-Ky.shape[1]]
+    # z = z[:,:-Kz.shape[1]]
     
-    # for i in range(tauC.shape[0]):
-    #     shift_amt_z = int(tauC[i])
-    #     shift_amt_y = int(tauY[i])
+    # # for i in range(tauC.shape[0]):
+    # #     shift_amt_z = int(tauC[i])
+    # #     shift_amt_y = int(tauY[i])
         
-    #     # z[:,:,i] = z[:,shift_amt_z:shift_amt_z+1,i] #np.roll(z[:,i],-shift_amt)
-    #     # y[:,:,i] = z[:,shift_amt_y:shift_amt_y+1,i] #np.roll(y[:,i],-int(tauY[i]))
+    # #     # z[:,:,i] = z[:,shift_amt_z:shift_amt_z+1,i] #np.roll(z[:,i],-shift_amt)
+    # #     # y[:,:,i] = z[:,shift_amt_y:shift_amt_y+1,i] #np.roll(y[:,i],-int(tauY[i]))
         
-    #     z[:,:,i] = np.roll(z[:,:,i],-shift_amt_z,axis=1)
-    #     y[:,:,i] = np.roll(y[:,:,i],-shift_amt_y,axis=1)
+    # #     z[:,:,i] = np.roll(z[:,:,i],-shift_amt_z,axis=1)
+    # #     y[:,:,i] = np.roll(y[:,:,i],-shift_amt_y,axis=1)
 
+    # # idx_plots = 200
+    # # y = np.convolve(data_toTake.X[idx_plots,:,0,0],Ky[:,0],mode='full');
+    # # z = np.convolve(data_toTake.X[idx_plots,:,0,0],Kz[:,0],mode='full')
+    # # print(y.shape)
+    # # plt.plot(data_toTake.X[idx_plots,:,0,0])
+    # # plt.plot(z[:-200]);plt.show()
     
-    # # adapt_out = (alpha[None,:]*y)/(1e-3+(beta[None,:]*z))
+    # idx_plots = 200
+    # adapt_out = zeta[None,:] + (alpha[None,:]*y)/(1+(beta[None,:]*z))
+    # plt.plot(alpha*y[idx_plots,:,0])
+    # plt.plot(beta*z[idx_plots,:,0])
+    # plt.plot(adapt_out[idx_plots,:,0])
+    # plt.ylim([0,500])
     
-    # # X = unroll_data(data_toTake.X[:,:,0,0])[temporal_width-1:]
-    # # y = data_toTake.y[:,0]
+    # # # X = unroll_data(data_toTake.X[:,:,0,0])[temporal_width-1:]
+    # # # y = data_toTake.y[:,0]
     
-    # # plt.plot(stim[:1500]);plt.plot(alpha[idx_param]*y[:1500]);plt.show()
-    # # plt.plot(lum_src[:1500]);plt.plot(beta[idx_param]*z[:1500]);plt.show()
-    # # plt.plot(lum_obj[100:1100]);plt.plot(adapt_out[100:1100,5:]);plt.show()
+    # # # plt.plot(stim[:1500]);plt.plot(alpha[idx_param]*y[:1500]);plt.show()
+    # # # plt.plot(lum_src[:1500]);plt.plot(beta[idx_param]*z[:1500]);plt.show()
+    # # # plt.plot(lum_obj[100:1100]);plt.plot(adapt_out[100:1100,5:]);plt.show()
 
-    # norm_out = (alpha[None,:]*data_toTake.X[:,:,0,0])/(1+(beta[None,:]*z[:,:,0]))
-    # idx_toplot = np.arange(1000,1500)
-    # plt.plot(data_toTake.X[idx_toplot,-1,0,0]);plt.plot(norm_out[idx_toplot,-1]);plt.ylim([0,100])
+    # # norm_out = (alpha[None,:]*data_toTake.X[:,:,0,0])/(1+(beta[None,:]*z[:,:,0]))
+    # # idx_toplot = np.arange(1000,1500)
+    # # plt.plot(data_toTake.X[idx_toplot,-1,0,0]);plt.plot(norm_out[idx_toplot,-1]);plt.ylim([0,100])
     
-    # # # final_out_scaled = (adapt_out - adapt_out.mean()) / (np.var(adapt_out)**.5)
-    # # # final_out_scaled = (params_norm['gamma']*final_out_scaled) + params_norm['beta']
-    # # # final_out = np.log(1+np.exp(final_out_scaled))
+    # # # # final_out_scaled = (adapt_out - adapt_out.mean()) / (np.var(adapt_out)**.5)
+    # # # # final_out_scaled = (params_norm['gamma']*final_out_scaled) + params_norm['beta']
+    # # # # final_out = np.log(1+np.exp(final_out_scaled))
     
-    # # final_out = np.log(1+np.exp(adapt_out))
+    # # # final_out = np.log(1+np.exp(adapt_out))
     
     
     
-    # # # idx_plots = np.arange(1000,2000)
-    # # # plt.plot(resp[idx_plots])
-    # # # plt.plot(final_out[idx_plots])
-    # # # # plt.plot(final_out_scaled[idx_plots])
-    # # # plt.show()
+    # # # # idx_plots = np.arange(1000,2000)
+    # # # # plt.plot(resp[idx_plots])
+    # # # # plt.plot(final_out[idx_plots])
+    # # # # # plt.plot(final_out_scaled[idx_plots])
+    # # # # plt.show()
     
-    # # # # plt.plot(Ky,'r')
-    # # # plt.plot(Kz,'m')
-    # # # plt.show()
+    # # # # # plt.plot(Ky,'r')
+    # # # # plt.plot(Kz,'m')
+    # # # # plt.show()
     
-    # # # plt.plot(stim[:500])
-    # # # # plt.plot(y[:500],'r')
-    # # # plt.plot(z[:500],'m')
-    # # # # plt.plot(1/(1+beta*z[:500]))
-    # # # plt.show()
+    # # # # plt.plot(stim[:500])
+    # # # # # plt.plot(y[:500],'r')
+    # # # # plt.plot(z[:500],'m')
+    # # # # # plt.plot(1/(1+beta*z[:500]))
+    # # # # plt.show()
 
 # %%
     # yy = inputs
-    # for layer in mdl.layers[1:4]:
+    # for layer in mdl.layers[1:3]:
     #     yy = layer(yy)
     # yy = yy[:,temporal_width-1:,:,:,:]
     # # yy = mdl.layers[6](yy)
-    # # for layer in mdl.layers[6:35]:
-    # #     yy = layer(yy) 
+    # for layer in mdl.layers[4:8]:
+    #     yy = layer(yy) 
     # new_mdl = Model(inputs,yy)
     # new_mdl.summary()
     
@@ -448,14 +477,39 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
     # # step_i = 100
     # idx_plots = 200#np.arange(100)
-    # # plt.plot(data_val.X[idx_plots,:-temporal_width+1,0,0].T,'black')
     # plt.plot(data_val.X[idx_plots,temporal_width-1:,0,0].T,'black')
-
-    # # plt.plot(data_val.X[step_i:step_i+50,-1,0,0],'black')
-    # plt.plot(data_val.y[idx_plots].T,'r')
-    # plt.plot(pred_lay[idx_plots,:,:])
-    # plt.ylim([0,50])
+    # # plt.plot(data_val.X[idx_plots,:,0,0].T,'black')
+    # # plt.plot(data_val.y[idx_plots].T,'b')
+    # plt.plot(pred_lay[idx_plots],'r')
+    # plt.ylim([-5,20])
     # plt.show()
+    
+# %% custom dense
+    # weights_dict = model.analysis.get_weightsDict(mdl)
+    # dense_k = weights_dict['dense_4/kernel']
+    # dense_b = weights_dict['dense_4/bias']
+    
+    # uid = 100
+    
+    # a = pred_lay[:,:,None]
+    # k = dense_k[None,:,:]
+    # out = a*k
+    # out_summed = np.squeeze(np.sum(out,axis=1))
+    # out_biased = out_summed + dense_b[None,:]
+    # out_act = np.log(1+np.exp(out_biased))
+
+    # idx_plots = 200    
+    # plt.plot(data_val.X[idx_plots,temporal_width-1:,0,0].T,'black')
+    # plt.plot(out_act[idx_plots],'r')
+    # plt.ylim([0,20])
+    
+    # uid = 150
+    # plt.plot(a[idx_plots])
+    # plt.plot(dense_k[uid,:]*100)
+    # plt.plot(out[idx_plots,uid,:])
+    
+
+
     
 # %% Write performance to csv file
     if np.isnan(fev_train):
@@ -477,8 +531,8 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
 
     print('-----WRITING TO CSV FILE-----')
     if saveToCSV==1:
-        csv_header = ['mdl_name','expDate','temp_window','batch_size','epochs','chan1_n','filt1_size','filt1_3rdDim','N_layers','chan2_n','filt2_size','filt2_3rdDim','chan3_n','filt3_size','filt3_3rdDim','BatchNorm','MaxPool','c_trial','FEV_train','FEV_val','FEVBestVal_train','FEVBest_val']
-        csv_data = [mdl_name,expDate,temporal_width,bz_ms,nb_epochs,chan1_n, filt1_size, filt1_3rdDim, N_layers, chan2_n, filt2_size, filt2_3rdDim, chan3_n, filt3_size, filt3_3rdDim,BatchNorm,MaxPool,c_trial,fev_train,fev_val,best_val_train,best_val]
+        csv_header = ['mdl_name','expDate','temp_window','batch_size','epochs','chan1_n','filt1_size','filt1_3rdDim','N_layers','chan2_n','filt2_size','filt2_3rdDim','chan3_n','filt3_size','filt3_3rdDim','BatchNorm','MaxPool','c_trial','FEV_train','FEV_val','FEVBestVal_train','FEVBest_val','FEV_all','FEV_local','FEV_global']
+        csv_data = [mdl_name,expDate,temporal_width,bz_ms,nb_epochs,chan1_n, filt1_size, filt1_3rdDim, N_layers, chan2_n, filt2_size, filt2_3rdDim, chan3_n, filt3_size, filt3_3rdDim,BatchNorm,MaxPool,c_trial,fev_train,fev_val,best_val_train,best_val,fev_all,fev_local,fev_global]
         
         fname_csv_file = 'performance_'+expDate+'.csv'
         fname_csv_file = os.path.join(path_save_performance,fname_csv_file)
