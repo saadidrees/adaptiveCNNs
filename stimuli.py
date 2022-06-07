@@ -49,13 +49,13 @@ def sin_mul(totalTime,freq_obj=5,amp_obj=1,offset_obj=1,freq_src=1,amp_src=1,off
 
 def obj_source_multi(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_src = 50,mean_src=10,amp_src=5,dur_src=50,sigma=1,temporal_width=0,frac_perturb=1):
     
-    nsamps_obj =  int(totalTime*60*1000/timeBin_obj)+temporal_width
+    nsamps_obj =  int(totalTime*60*1000/timeBin_obj)+timeBin_src
     lum_obj = np.random.normal(mean_obj,amp_obj,nsamps_obj)
     lum_obj = np.repeat(lum_obj,timeBin_obj)
     lum_obj = gaussian_filter(lum_obj,sigma=sigma)
     
     
-    lum_obj_temp = np.reshape(lum_obj,(int(lum_obj.shape[0]/temporal_width),int(temporal_width)),order='C')
+    lum_obj_temp = np.reshape(lum_obj,(int(lum_obj.shape[0]/timeBin_src),int(timeBin_src)),order='C')
     lum_obj_rever = np.reshape(lum_obj_temp,lum_obj.shape[0],order='C')
     assert np.sum(abs(lum_obj-lum_obj_rever))==0
     
@@ -74,7 +74,7 @@ def obj_source_multi(totalTime,timeBin_obj=10,mean_obj=10,amp_obj=2,timeBin_src 
             # dur_amp_shift_id[cntr,2] = k
             rgb = mean_src*np.ones((timeBin_src))
             rgb[:dur_src[i]] = amp_src[j]
-            shift = int((temporal_width - dur_src[i])/2)
+            shift = int((timeBin_src - dur_src[i])/2)
             rgb = np.roll(rgb,shift)
             step_block[:,cntr] = rgb
             
