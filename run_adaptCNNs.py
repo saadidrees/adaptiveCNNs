@@ -96,10 +96,10 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         
         
         mean_src = 5
-        timeBin_src = temporal_width
+        timeBin_src = 500#temporal_width+100
         dur_src = np.array([60]) 
         amp_src = np.array([1000]) #np.array([10,50,100])
-        frac_perturb = 1
+        frac_perturb = 0.5
     
         
         lum_obj,lum_src = stimuli.obj_source_multi(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
@@ -141,7 +141,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
             
         # % Datasets
-        frac_train = 0.90
+        frac_train = 0.8
         idx_train = np.floor(frac_train*stim.shape[0]).astype('int')
         
         stim_train = stim[:idx_train].copy()
@@ -150,7 +150,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         stim_test = stim[idx_train:].copy()
         spike_vec_test = resp[idx_train:].copy()
         
-        N_test_limit = 5000
+        N_test_limit = 10000
         if stim_test.shape[0]>N_test_limit:
             stim_test = stim_test[:N_test_limit]
             spike_vec_test = spike_vec_test[:N_test_limit]
