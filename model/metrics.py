@@ -51,7 +51,7 @@ def mean_squared_error(obs_rate, est_rate):
     if obs_rate.shape[-1]>1:
         mse_val = tf.experimental.numpy.nanmean(K.square(est_rate - obs_rate), axis=-1, keepdims=True)
     else:
-        mse_val = tf.experimental.numpy.nanmean(K.square(est_rate - obs_rate), axis=0, keepdims=True)
+        mse_val = K.mean(K.square(est_rate - obs_rate), axis=0, keepdims=True)
     
     return mse_val
 
@@ -67,11 +67,11 @@ def fraction_of_explained_variance(obs_rate, est_rate):
     """
     
     if obs_rate.shape[-1]>1:
-        fev = 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=-1, keepdims=True)
+        fev_val = 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=-1, keepdims=True)
     else:
-        fev = 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=0, keepdims=True)
+        fev_val = 1.0 - mean_squared_error(obs_rate, est_rate) / K.var(est_rate, axis=0, keepdims=True)
         
-    return fev
+    return fev_val
 
 # def fraction_of_explained_variance(obs_rate, est_rate):
 #     """Fraction of explained variance
