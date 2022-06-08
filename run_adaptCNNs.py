@@ -46,7 +46,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     from collections import namedtuple
     Exptdata = namedtuple('Exptdata', ['X', 'y'])
     
-    from model.data_handler import rolling_window, unroll_data, save_h5Dataset, load_h5Dataset
+    from model.data_handler import rolling_window, unroll_data, save_h5Dataset, load_h5Dataset, check_trainVal_contamination
     from scipy.ndimage.filters import gaussian_filter
     from scipy.special import gamma as scipy_gamma
     import h5py
@@ -56,8 +56,8 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     def generate_simple_filter(tau,n,t):
         t_rep = np.repeat(t[:,None],n.shape[0],axis=-1)
         f = (t_rep**n[None,:])*np.exp(-t_rep/tau[None,:]); # functional form in paper
-        # f = (f/tau**(n+1))/scipy_gamma(n+1) # normalize appropriately
-        f = f/np.sum(f,axis=0)
+        f = (f/tau**(n+1))/scipy_gamma(n+1) # normalize appropriately
+        # f = f/np.sum(f,axis=0)
         return f
     
     # % Build basic signal and response
@@ -77,7 +77,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         
         lum_src = data_train.X[:,-1,0,0]/data_train.y[:,0]
         
-        idx_plots = np.arange(200,1200)
+        idx_plots = np.arange(200,10000)
         plt.plot(data_train.y[idx_plots],'red');plt.show()
         plt.plot(lum_src[idx_plots]);plt.show()
         plt.plot(data_train.X[idx_plots,-1,0,0],'green');plt.show()
@@ -97,9 +97,9 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         
         mean_src = 5
         timeBin_src = 500#temporal_width+100
-        dur_src = np.array([60]) 
-        amp_src = np.array([1000]) #np.array([10,50,100])
-        frac_perturb = 0.5
+        dur_src = np.array([40,60,80]) 
+        amp_src = np.array([1e1,1e2,1e3,1e4,1e5]) #np.array([10,50,100])
+        frac_perturb = 1
     
         
         lum_obj,lum_src = stimuli.obj_source_multi(totalTime=totalTime,timeBin_obj=timeBin_obj,mean_obj=mean_obj,amp_obj=amp_obj,
@@ -130,7 +130,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         # plt.plot(stim[idx_plots,:].T)
         
         # For rolled
-        idx_plots = np.arange(200,1200)
+        idx_plots = np.arange(500,4500)
         plt.plot(lum_src[idx_plots])
         plt.plot(lum_obj[idx_plots],'r')
         plt.show()
@@ -141,7 +141,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
             
         # % Datasets
-        frac_train = 0.8
+        frac_train = 0.9
         idx_train = np.floor(frac_train*stim.shape[0]).astype('int')
         
         stim_train = stim[:idx_train].copy()
@@ -150,7 +150,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         stim_test = stim[idx_train:].copy()
         spike_vec_test = resp[idx_train:].copy()
         
-        N_test_limit = 10000
+        N_test_limit = 20000
         if stim_test.shape[0]>N_test_limit:
             stim_test = stim_test[:N_test_limit]
             spike_vec_test = spike_vec_test[:N_test_limit]
@@ -191,6 +191,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         X = X[:,:,np.newaxis,np.newaxis]
         y = dict_train['y']
         y = rolling_window(y,temporal_width)
+        y_train_rolled = y.copy()
         y = y[:,-1] #    y = y[:,-1]
         
         if y.ndim==1:
@@ -203,10 +204,14 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     
         y = dict_val['y']
         y = rolling_window(y,temporal_width)
+        y_val_rolled = y.copy()
         y = y[:,-1] #y = y[:,-1]
         if y.ndim==1:
             y = y[:,np.newaxis]
         data_val = Exptdata(X,y)
+        
+        check_trainVal_contamination(y_train_rolled,y_val_rolled,temporal_width)
+        
 
         parameters = dict(sigma = sigma,timeBin_obj = timeBin_obj,mean_obj = mean_obj,amp_obj = amp_obj,mean_src = mean_src,timeBin_src = timeBin_src,dur_src = dur_src,amp_src = amp_src,frac_perturb = frac_perturb)
         del X, y
@@ -319,7 +324,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     y_act = data_val.y
     X_unr = data_val.X[:,-1,0,0]
     
-    idx_plots = np.arange(1000,2000)
+    idx_plots = np.arange(800,2000)
     plt.plot(X_unr[idx_plots])
     plt.plot(mean_src*y_act[idx_plots],'darkorange')
     plt.plot(mean_src*y_pred[idx_plots],'r')
@@ -359,13 +364,14 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
 
 # %% rebuild a-conv output
     # weights_dict = model.analysis.get_weightsDict(mdl)
-    # # params_norm = model.analysis.get_weightsOfLayer(weights_dict,'batch_normalization')
-    # params = model.analysis.get_weightsOfLayer(weights_dict,'photoreceptor_da_multichan_randinit_10')
+    # params_norm = model.analysis.get_weightsOfLayer(weights_dict,'batch_normalization')
+    # params = model.analysis.get_weightsOfLayer(weights_dict,'photoreceptor_da_multichan_randinit')
     
     # # for i in params_updated.keys():
     # #     params[i] = params_updated[i]
     
     # zeta = np.atleast_1d(params['zeta']*params['zeta_mulFac'])
+    # kappa = np.atleast_1d(params['kappa']*params['kappa_mulFac'])
     # alpha = np.atleast_1d(params['alpha']*params['alpha_mulFac'])
     # beta = np.atleast_1d(params['beta']*params['beta_mulFac'])
     # gamma = np.atleast_1d(params['gamma']*params['gamma_mulFac'])  #np.atleast_1d(0.75) #
@@ -387,44 +393,39 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     # # Ky = np.flip(Ky)  
     # # Kz = np.flip(Kz)
 
-    # plt.plot(Ky);plt.show()
-    # plt.plot(Kz);plt.show()
+    # plt.plot(Ky[:50]);plt.show()
+    # plt.plot(Kz[:50]);plt.show()
 
     # data_toTake = data_val
+
     # y = np.zeros((data_toTake.X.shape[0],data_toTake.X.shape[1]+Ky.shape[0]-1,Ky.shape[1]))
     # z = np.zeros((data_toTake.X.shape[0],data_toTake.X.shape[1]+Kz.shape[0]-1,Kz.shape[1]))
-    
-
     # for i in range(Ky.shape[1]):
     #     y[:,:,i] = np.apply_along_axis(lambda m: np.convolve(m, Ky[:,0], mode='full'),axis=1,arr=data_toTake.X[:,:,0,0]) #np.convolve(stim,Ky[:,i],'full')
     #     z[:,:,i] = np.apply_along_axis(lambda m: np.convolve(m, Kz[:,0], mode='full'),axis=1,arr=data_toTake.X[:,:,0,0])
        
-    # y = y[:,:-Ky.shape[1]]
-    # z = z[:,:-Kz.shape[1]]
+    # y = y[:,:-Ky.shape[0]+1]
+    # z = z[:,:-Kz.shape[0]+1]
     
-    # # for i in range(tauC.shape[0]):
-    # #     shift_amt_z = int(tauC[i])
-    # #     shift_amt_y = int(tauY[i])
-        
-    # #     # z[:,:,i] = z[:,shift_amt_z:shift_amt_z+1,i] #np.roll(z[:,i],-shift_amt)
-    # #     # y[:,:,i] = z[:,shift_amt_y:shift_amt_y+1,i] #np.roll(y[:,i],-int(tauY[i]))
-        
-    # #     z[:,:,i] = np.roll(z[:,:,i],-shift_amt_z,axis=1)
-    # #     y[:,:,i] = np.roll(y[:,:,i],-shift_amt_y,axis=1)
-
-    # # idx_plots = 200
-    # # y = np.convolve(data_toTake.X[idx_plots,:,0,0],Ky[:,0],mode='full');
-    # # z = np.convolve(data_toTake.X[idx_plots,:,0,0],Kz[:,0],mode='full')
-    # # print(y.shape)
-    # # plt.plot(data_toTake.X[idx_plots,:,0,0])
-    # # plt.plot(z[:-200]);plt.show()
+    # shift_amt_y = np.argmax(Ky,axis=0).astype('int32')
+    # shift_amt_z = np.argmax(Kz,axis=0).astype('int32')
     
-    # idx_plots = 200
-    # adapt_out = zeta[None,:] + (alpha[None,:]*y)/(1+(beta[None,:]*z))
-    # plt.plot(alpha*y[idx_plots,:,0])
-    # plt.plot(beta*z[idx_plots,:,0])
-    # plt.plot(adapt_out[idx_plots,:,0])
-    # plt.ylim([0,500])
+    # y_sliced = np.zeros((data_toTake.X.shape[0],Ky.shape[1]))
+    # z_sliced = np.zeros((data_toTake.X.shape[0],Kz.shape[1]))
+    # for i in range(Ky.shape[1]):
+    #     y_sliced[:,i] = y[:,shift_amt_y[i],i] #np.roll(y[:,i],-int(tauY[i]))
+    #     z_sliced[:,i] = z[:,shift_amt_z[i],i] #np.roll(z[:,i],-shift_amt)
+        
+    # y = y_sliced
+    # z = z_sliced
+    
+    # idx_filt = np.arange(0,Ky.shape[1])
+    # idx_plots = np.arange(200,1000)
+    # adapt_out = zeta[None,:] + (alpha[None,:]*y)/(kappa[None,:]+(beta[None,:]*z))
+    # plt.plot(alpha[None,:]*y[idx_plots,:])
+    # plt.plot(beta[None,idx_filt]*z[idx_plots,idx_filt])
+    # plt.plot(adapt_out[idx_plots,idx_filt])
+    # # plt.ylim([0,500])
     
     # # # X = unroll_data(data_toTake.X[:,:,0,0])[temporal_width-1:]
     # # # y = data_toTake.y[:,0]
@@ -437,19 +438,15 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     # # idx_toplot = np.arange(1000,1500)
     # # plt.plot(data_toTake.X[idx_toplot,-1,0,0]);plt.plot(norm_out[idx_toplot,-1]);plt.ylim([0,100])
     
-    # # # # final_out_scaled = (adapt_out - adapt_out.mean()) / (np.var(adapt_out)**.5)
-    # # # # final_out_scaled = (params_norm['gamma']*final_out_scaled) + params_norm['beta']
-    # # # # final_out = np.log(1+np.exp(final_out_scaled))
+    # # final_out_scaled = (adapt_out - adapt_out.mean()) / (np.var(adapt_out)**.5)
+    # # final_out_scaled = (params_norm['gamma']*final_out_scaled) + params_norm['beta']
+    # # final_out = np.log(1+np.exp(final_out_scaled))
     
-    # # # final_out = np.log(1+np.exp(adapt_out))
-    
-    
-    
-    # # # # idx_plots = np.arange(1000,2000)
-    # # # # plt.plot(resp[idx_plots])
-    # # # # plt.plot(final_out[idx_plots])
-    # # # # # plt.plot(final_out_scaled[idx_plots])
-    # # # # plt.show()
+    # # idx_plots = np.arange(1000,2000)
+    # # plt.plot(resp[idx_plots])
+    # # plt.plot(final_out[idx_plots])
+    # # # plt.plot(final_out_scaled[idx_plots])
+    # # plt.show()
     
     # # # # # plt.plot(Ky,'r')
     # # # # plt.plot(Kz,'m')
@@ -463,12 +460,12 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
 
 # %%
     # yy = inputs
-    # for layer in mdl.layers[1:3]:
+    # for layer in mdl.layers[1:5]:
     #     yy = layer(yy)
-    # yy = yy[:,temporal_width-1:,:,:,:]
+    # yy = yy[:,:,:,:,0]
     # # yy = mdl.layers[6](yy)
-    # for layer in mdl.layers[4:8]:
-    #     yy = layer(yy) 
+    # # for layer in mdl.layers[6:9]:
+    # #     yy = layer(yy) 
     # new_mdl = Model(inputs,yy)
     # new_mdl.summary()
     
@@ -476,37 +473,36 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
     # pred_lay = np.squeeze(new_mdl.predict(data_val.X))
     
     # # step_i = 100
-    # idx_plots = 200#np.arange(100)
-    # plt.plot(data_val.X[idx_plots,temporal_width-1:,0,0].T,'black')
-    # # plt.plot(data_val.X[idx_plots,:,0,0].T,'black')
-    # # plt.plot(data_val.y[idx_plots].T,'b')
-    # plt.plot(pred_lay[idx_plots],'r')
-    # plt.ylim([-5,20])
+    # idx_plots = np.arange(500,2000)
+    # plt.plot(data_val.X[idx_plots,-1,0,0],'black')
+    # plt.plot(data_val.y[idx_plots],'b',linewidth=2)
+    # plt.plot(pred_lay[idx_plots])
+    # plt.ylim([0,50])
     # plt.show()
     
 # %% custom dense
     # weights_dict = model.analysis.get_weightsDict(mdl)
-    # dense_k = weights_dict['dense_4/kernel']
-    # dense_b = weights_dict['dense_4/bias']
+    # dense_k = weights_dict['dense/kernel']
+    # dense_b = weights_dict['dense/bias']
     
-    # uid = 100
+    # uid = 0
     
-    # a = pred_lay[:,:,None]
-    # k = dense_k[None,:,:]
+    # a = pred_lay
+    # k = dense_k[None,:]
     # out = a*k
     # out_summed = np.squeeze(np.sum(out,axis=1))
-    # out_biased = out_summed + dense_b[None,:]
+    # out_biased = out_summed + dense_b
     # out_act = np.log(1+np.exp(out_biased))
 
-    # idx_plots = 200    
-    # plt.plot(data_val.X[idx_plots,temporal_width-1:,0,0].T,'black')
-    # plt.plot(out_act[idx_plots],'r')
-    # plt.ylim([0,20])
+    # idx_plots = np.arange(900,2000)
+    # plt.plot(data_val.X[idx_plots,-1,0,0],'black')
+    # plt.plot(mean_src*out_act[idx_plots],'r')
+    # plt.ylim([0,50])
     
-    # uid = 150
-    # plt.plot(a[idx_plots])
-    # plt.plot(dense_k[uid,:]*100)
-    # plt.plot(out[idx_plots,uid,:])
+    # uid = 0
+    # plt.plot(out_biased[idx_plots])
+    # plt.plot(dense_k)
+    # plt.plot(out_act[idx_plots])
     
 
 

@@ -815,10 +815,10 @@ def check_trainVal_contamination(stimFrames_train,stimFrames_val,filt_temporal_w
     
     if filt_temporal_width>0:
         rgb = unroll_data(stimFrames_train)
-        stimFrames_train_flattened = np.reshape(rgb,(rgb.shape[0],np.prod(rgb.shape[1:])))
+        stimFrames_train_flattened = np.reshape(rgb,(rgb.shape[0],int(np.prod(rgb.shape[1:]))))
 
         rgb = unroll_data(stimFrames_val)
-        stimFrames_val_flattened = np.reshape(rgb,(rgb.shape[0],np.prod(rgb.shape[1:])))
+        stimFrames_val_flattened = np.reshape(rgb,(rgb.shape[0],int(np.prod(rgb.shape[1:]))))
         
     else:
         stimFrames_train_flattened = np.reshape(stimFrames_train,(stimFrames_train.shape[0],np.prod(stimFrames_train.shape[1:])))
@@ -834,18 +834,11 @@ def check_trainVal_contamination(stimFrames_train,stimFrames_val,filt_temporal_w
     b = np.unique(stimFrames_val_flattened,axis=0)   
     c = np.concatenate((b,a),axis=0)
     d,d_idx = np.unique(c,axis=0,return_index=True)
-    # d_idx = d_idx[d_idx>b.shape[0]] - b.shape[0]
-    # idx_discard = np.setdiff1d(np.arange(0,a.shape[0]),d_idx)
-    idx_discard = np.atleast_1d(np.empty(0))
-    if np.abs(np.unique(c,axis=0).shape[0] - c.shape[0]) > 2:
+    if np.abs(d.shape[0] - c.shape[0]) > 2:
         Warning('Training samples contains validation samples. Finding training indices to remove')
-        
-        idx_discard = get_index_contamination(stimFrames_train_flattened,stimFrames_val_flattened)
-        return idx_discard
-    
+            
     else:
         print('No contamination found')
-        return idx_discard
               
     # if idx_discard.size!=0:
     #     print('training samples contains validation samples')
