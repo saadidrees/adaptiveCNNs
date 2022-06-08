@@ -49,9 +49,9 @@ def correlation_coefficient(obs_rate, est_rate):    # (y_true, y_pred)
 def mean_squared_error(obs_rate, est_rate):
     """Mean squared error across samples"""
     if obs_rate.shape[-1]>1:
-        mse_val = tf.experimental.numpy.nanmean(K.square(est_rate - obs_rate), axis=0, keepdims=True)
-    else:
         mse_val = tf.experimental.numpy.nanmean(K.square(est_rate - obs_rate), axis=-1, keepdims=True)
+    else:
+        mse_val = tf.experimental.numpy.nanmean(K.square(est_rate - obs_rate), axis=0, keepdims=True)
     
     return mse_val
 
@@ -94,8 +94,8 @@ def fraction_of_explainable_variance_explained(obs_rate, est_rate,obs_noise):
 
 def fraction_of_explainable_variance_explained_K(obs_rate, est_rate,obs_noise=0):
     resid = obs_rate - est_rate
-    mse_resid = tf.experimental.numpy.nanmean(resid**2,axis=-1)
-    var_test = K.var(obs_rate,axis=-1)
+    mse_resid = tf.experimental.numpy.nanmean(resid**2,axis=0)
+    var_test = K.var(obs_rate,axis=0)
     fev_allUnits = 1 - ((mse_resid - obs_noise)/(var_test-obs_noise))
     # fev_median = K.median(fev_allUnits)
     # fev_std = np.std(fev_allUnits)
@@ -105,11 +105,11 @@ def fraction_of_explainable_variance_explained_K(obs_rate, est_rate,obs_noise=0)
 
 
 def correlation_coefficient_distribution(obs_rate,est_rate):
-    x_mu = obs_rate - np.mean(obs_rate, axis=-1)
-    x_std = np.std(obs_rate, axis=-1)
-    y_mu = est_rate - np.mean(est_rate, axis=-1)
-    y_std = np.std(est_rate, axis=-1)
-    cc_allUnits = np.mean(x_mu * y_mu,axis=-1) / (x_std * y_std)
+    x_mu = obs_rate - np.mean(obs_rate, axis=0)
+    x_std = np.std(obs_rate, axis=0)
+    y_mu = est_rate - np.mean(est_rate, axis=0)
+    y_std = np.std(est_rate, axis=0)
+    cc_allUnits = np.mean(x_mu * y_mu,axis=0) / (x_std * y_std)
     return cc_allUnits
 
 
