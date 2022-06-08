@@ -70,6 +70,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         fname_data_train_val_test = ''
         
     if fname_data_train_val_test != '':
+        path_dataset_base = os.path.join(path_model_save_base,'datasets')
         fname = os.path.join(path_dataset_base,fname_data_train_val_test)
         print('loading data from '+fname)
 
