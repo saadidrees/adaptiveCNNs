@@ -74,7 +74,8 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         fname = os.path.join(path_dataset_base,fname_data_train_val_test)
         print('loading data from '+fname)
 
-        data_train,data_val,_ = load_h5Dataset(fname)
+        data_train,data_val,parameters = load_h5Dataset(fname)
+        mean_src = parameters['mean_src']
         
         lum_src = data_train.X[:,-1,0,0]/data_train.y[:,0]
         
@@ -99,7 +100,7 @@ def run_model(expDate,mdl_name,path_model_save_base,fname_data_train_val_test,
         mean_src = 5
         timeBin_src = 500#temporal_width+100
         dur_src = np.array([40,60,80]) 
-        amp_src = np.array([1e1,1e2,1e3,1e4,1e5]) #np.array([10,50,100])
+        amp_src = np.array([1e3]) #[1e1,1e2,1e3,1e4,1e5]) #np.array([10,50,100])
         frac_perturb = 1
     
         
